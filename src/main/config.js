@@ -3,7 +3,6 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const crypto = require('crypto');
 
 // The app was called code-manager before; move its files over once.
 function migrateDir(oldPath, newPath) {
@@ -19,8 +18,6 @@ const DIR = process.env.SPACEHERD_DIR || path.join(os.homedir(), '.config', 'spa
 if (!process.env.SPACEHERD_DIR) migrateDir(path.join(os.homedir(), '.config', 'code-manager'), DIR);
 const CONFIG_PATH = path.join(DIR, 'config.json');
 const STATE_PATH = path.join(DIR, 'state.json');
-const TOKENS_PATH = path.join(DIR, 'tokens.json');
-const RUN_DIR = path.join(DIR, 'run');
 
 const DEFAULT_CONFIG = {
   // Command that starts the herdr TUI in the left pane.
@@ -47,7 +44,7 @@ const DEFAULT_CONFIG = {
 };
 
 function ensureDir() {
-  fs.mkdirSync(RUN_DIR, { recursive: true, mode: 0o700 });
+  fs.mkdirSync(DIR, { recursive: true, mode: 0o700 });
 }
 
 function readJson(file, fallback) {
@@ -97,17 +94,6 @@ const state = {
   },
 };
 
-// One stable connection token per machine. Stable, so the token cookie in the
-// persistent partition keeps working across restarts.
-function tokenFor(machineId) {
-  const tokens = readJson(TOKENS_PATH, {});
-  if (!tokens[machineId]) {
-    tokens[machineId] = crypto.randomBytes(24).toString('hex');
-    writeJson(TOKENS_PATH, tokens, 0o600);
-  }
-  return tokens[machineId];
-}
-
 // Timestamped log lines, enabled with SPACEHERD_DEBUG=1.
 const debug = process.env.SPACEHERD_DEBUG ? (...args) => console.log(Date.now(), ...args) : () => {};
 
@@ -115,9 +101,7 @@ module.exports = {
   debug,
   migrateDir,
   DIR,
-  RUN_DIR,
   CONFIG_PATH,
   loadConfig,
   state,
-  tokenFor,
 };

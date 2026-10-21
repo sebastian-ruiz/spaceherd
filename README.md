@@ -21,6 +21,15 @@ machine downloads the VS Code server, which takes a minute or two.
 The left pane attaches to your normal herdr session, the same one you get by
 running `herdr` in any terminal. Closing the app detaches; agents keep running.
 
+### Laptop and desktop
+
+herdr's spaces live in the herdr server of the machine they run on. Work from
+the laptop with the desktop added as an SSH machine, close the laptop, and run
+spaceherd on the desktop: it attaches to the same herdr session and the same
+VS Code server, so the same spaces, agents and files are there. VS Code's
+open editors and layout are kept per client, so those don't follow you.
+Running spaceherd on a machine needs Node.js there for `npm install`.
+
 ## How it works
 
 - **Which space is active:** herdr writes `"{hostname}: {workspace}"` as the
@@ -33,7 +42,11 @@ running `herdr` in any terminal. Closing the app detaches; agents keep running.
   `folderOverrides` in the config wins over both.
 - **VS Code:** one `code serve-web` per machine on a fixed port, and one
   Electron view per space. Views stay loaded while hidden, so switching back is
-  instant. The `maxLiveViews` most recently used views are kept.
+  instant. The `maxLiveViews` most recently used views are kept. The server
+  and its token (`~/.config/spaceherd/vscode-token` on that machine) are
+  shared by every spaceherd that uses the machine, locally or over SSH, and
+  the server keeps running when the app quits. If another server with a
+  different token holds the port, the VS Code pane says so.
 - **Alerts:** the app reads each machine's herdr snapshot every 1.5 s. When an
   agent becomes *blocked* or *done* it shows a notification; clicking it focuses
   that space. The dock badge counts blocked agents. If you set herdr's

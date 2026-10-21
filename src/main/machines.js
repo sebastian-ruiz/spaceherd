@@ -7,10 +7,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const http = require('http');
+const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 const { EventEmitter } = require('events');
 const { HerdrClient } = require('./herdr-client');
-const { RUN_DIR, tokenFor, debug } = require('./config');
+const { debug } = require('./config');
 
 const POLL_MS = 1500;
 
@@ -26,13 +27,23 @@ const LIFECYCLE_EVENTS = [
   'pane.agent_detected',
 ];
 
-function waitForHttp(port, { timeoutMs = 300000 } = {}) {
+// A machine's VS Code server is shared by every spaceherd that uses the
+// machine, locally or over SSH (laptop and desktop), so the token lives in a
+// fixed per-user place on the machine itself. The SSH remote script uses the
+// same path.
+const SHARED_DIR = path.join(os.homedir(), '.config', 'spaceherd');
+
+// Resolves once serve-web answers with our token. A 403 means some other
+// server holds the port with a different token; waiting won't fix that.
+function waitForHttp(port, { token, timeoutMs = 300000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve, reject) => {
     const attempt = () => {
-      const req = http.get({ host: '127.0.0.1', port, path: '/version', timeout: 2000 }, (res) => {
+      const q = token ? `?tkn=${token}` : '';
+      const req = http.get({ host: '127.0.0.1', port, path: `/${q}`, timeout: 2000 }, (res) => {
         res.resume();
-        resolve();
+        if (res.statusCode !== 403) return resolve();
+        reject(Object.assign(new Error(`Port ${port} is held by a VS Code server with a different token`), { code: 'EFOREIGN' }));
       });
       req.on('error', retry);
       req.on('timeout', () => { req.destroy(); });
@@ -52,8 +63,8 @@ class Machine extends EventEmitter {
     this.def = def;
     this.env = env;
     this.hostnames = (def.hostnames || []).map((h) => h.toLowerCase());
-    // SSH machines get their token from the remote once connected.
-    this.token = def.type === 'ssh' ? null : tokenFor(this.id);
+    // Read from the machine's shared token file once its server is up.
+    this.token = null;
     this.vscodePort = def.vscodePort;
     this.snapshot = null;
     this.lastFocusAt = 0;
@@ -128,13 +139,22 @@ class LocalMachine extends Machine {
   }
 
   async startServeWeb() {
-    // A server left over from a previous run keeps serving with the same token.
+    fs.mkdirSync(SHARED_DIR, { recursive: true, mode: 0o700 });
+    const tokenFile = path.join(SHARED_DIR, 'vscode-token');
+    let token = fs.existsSync(tokenFile) ? fs.readFileSync(tokenFile, 'utf8').trim() : '';
+    if (!token) {
+      token = crypto.randomBytes(24).toString('hex');
+      fs.writeFileSync(tokenFile, token, { mode: 0o600 });
+    }
+    this.token = token;
+
+    // Already running, started by us earlier or by a client over SSH.
     try {
-      await waitForHttp(this.vscodePort, { timeoutMs: 300 });
+      await waitForHttp(this.vscodePort, { token, timeoutMs: 300 });
       return;
-    } catch {}
-    const tokenFile = path.join(RUN_DIR, `${this.id}.token`);
-    fs.writeFileSync(tokenFile, this.token, { mode: 0o600 });
+    } catch (err) {
+      if (err.code === 'EFOREIGN') throw err;
+    }
     const args = [
       'serve-web',
       '--host', '127.0.0.1',
@@ -142,25 +162,20 @@ class LocalMachine extends Machine {
       '--connection-token-file', tokenFile,
       '--accept-server-license-terms',
     ];
-    // `code` -> code-tunnel -> code-server -> node: run it in its own process
-    // group so stop() can end the whole tree.
-    this.serveWeb = spawn(this.def.codeCommand || 'code', args, {
+    // Detached and unreferenced, like `nohup` on SSH machines: other clients
+    // may be using this server, so it outlives the app.
+    // serve-web logs its URL including the token, so keep the log private.
+    const logPath = path.join(SHARED_DIR, 'serve-web.log');
+    const log = fs.openSync(logPath, 'a', 0o600);
+    fs.chmodSync(logPath, 0o600);
+    const proc = spawn(this.def.codeCommand || 'code', args, {
       env: this.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['ignore', log, log],
       detached: true,
     });
-    const log = fs.createWriteStream(path.join(RUN_DIR, `${this.id}-serve-web.log`));
-    this.serveWeb.stdout.pipe(log);
-    this.serveWeb.stderr.pipe(log);
-    this.serveWeb.on('exit', (code) => console.warn(`[${this.id}] serve-web exited (${code})`));
-    await waitForHttp(this.vscodePort);
-  }
-
-  stop() {
-    super.stop();
-    if (this.serveWeb?.exitCode === null) {
-      try { process.kill(-this.serveWeb.pid, 'SIGTERM'); } catch {}
-    }
+    proc.unref();
+    fs.closeSync(log);
+    await waitForHttp(this.vscodePort, { token });
   }
 }
 
@@ -263,7 +278,7 @@ class SshMachine extends Machine {
       this.token = token;
       this.retryMs = 1000;
       if (!this.herdr) this.connectHerdr(this.localSocket);
-      waitForHttp(this.vscodePort).then(this.resolveVscode, (err) => console.warn(`[${this.id}] ${err.message}`));
+      waitForHttp(this.vscodePort, { token }).then(this.resolveVscode, (err) => console.warn(`[${this.id}] ${err.message}`));
     });
     proc.on('exit', (code) => {
       if (this.proc !== proc) return;
