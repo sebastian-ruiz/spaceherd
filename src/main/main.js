@@ -7,6 +7,7 @@ const { VSCodeViews } = require('./vscode-views');
 const { Spaces } = require('./spaces');
 const { Attention } = require('./attention');
 const { HerdrPty } = require('./pty');
+const { forwardsToVSCode, asInputEvent, chord } = require('./shortcuts');
 
 app.setName('spaceherd');
 // Electron data (VS Code's per-machine state, cookies) lived under the old
@@ -150,6 +151,17 @@ function createWindow() {
   terminalView.webContents.on('input-event', (_e, input) => {
     if (input.type === 'mouseDown' || input.type === 'mouseUp') debug(`terminal ${input.type}`, input.x, input.y);
     if (isUserInput(input)) focusIntent.target = 'terminal';
+  });
+  // VS Code's shortcuts work from herdr, as from VS Code's own terminal. Only
+  // the key press is replayed: focus moves first, so VS Code gets the release
+  // itself (Ctrl+Tab's picker opens the editor when Ctrl is let go).
+  terminalView.webContents.on('before-input-event', (event, input) => {
+    const target = views.activeWebContents();
+    if (!target || !forwardsToVSCode(input)) return;
+    debug('forward to vscode', chord(input));
+    event.preventDefault();
+    focusVSCode();
+    target.sendInputEvent(asInputEvent(input));
   });
   terminalView.webContents.on('focus', () => debug('terminal view focused'));
   terminalView.webContents.on('blur', () => debug('terminal view blurred'));

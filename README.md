@@ -47,6 +47,13 @@ Running spaceherd on a machine needs Node.js there for `npm install`.
   shared by every spaceherd that uses the machine, locally or over SSH, and
   the server keeps running when the app quits. If another server with a
   different token holds the port, the VS Code pane says so.
+- **Shortcuts:** VS Code's shortcuts work while herdr has focus, as from
+  VS Code's own terminal: the keys VS Code's terminal hands to VS Code move
+  focus to VS Code and act there. On macOS that is every `Cmd` key except
+  `Cmd+C/V/X/Q/W/H/M`; on Linux a fixed list (`Ctrl+P`, `Ctrl+E`,
+  `Ctrl+Shift+P`, `F1`, `Ctrl+J`, `Ctrl+Tab`, `Ctrl+PageUp/Down`, `Ctrl+1..8`,
+  `Ctrl+Shift+B`, debug keys). Everything else, including `Ctrl+C`, `Ctrl+B`
+  and `Ctrl+K`, goes to herdr. See `src/main/shortcuts.js`.
 - **Alerts:** the app reads each machine's herdr snapshot every 1.5 s. When an
   agent becomes *blocked* or *done* it shows a notification; clicking it focuses
   that space. The dock badge counts blocked agents. If you set herdr's
