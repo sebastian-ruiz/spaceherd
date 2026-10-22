@@ -207,7 +207,7 @@ function createWindow() {
   });
   win.on('closed', () => { win = null; });
 
-  machines = config.machines.map((def) => createMachine(def, { env: shellEnv.cached }));
+  machines = config.machines.map(newMachine);
   spaces = new Spaces({ machines, views, config, state });
   spaces.on('layout', (open) => {
     const item = Menu.getApplicationMenu()?.getMenuItemById('vscode-toggle');
@@ -236,6 +236,22 @@ function createWindow() {
   setInterval(syncHerdrMachines, 15000);
 }
 
+// An SSH machine's hostname (what herdr's title shows) is learned on
+// connecting. Remember it, so the title matches the machine at startup.
+function newMachine(def) {
+  const learned = state.get('machineHostnames', {});
+  const machine = createMachine(
+    { ...def, hostnames: [...(def.hostnames || []), ...(learned[def.id] || [])] },
+    { env: shellEnv.cached },
+  );
+  machine.on('hostname', (h) => {
+    const all = { ...state.get('machineHostnames', {}) };
+    all[def.id] = [...new Set([...(all[def.id] || []), h])];
+    state.set('machineHostnames', all);
+  });
+  return machine;
+}
+
 // Adds SSH machines saved in herdr that the config doesn't list. Each gets a
 // stable local port, so its VS Code state (kept per origin) survives restarts.
 async function syncHerdrMachines() {
@@ -247,7 +263,7 @@ async function syncHerdrMachines() {
       ports[def.id] = Math.max(47800, ...used) + 1;
       state.set('machinePorts', ports);
     }
-    const machine = createMachine({ ...def, vscodePort: ports[def.id] }, { env: shellEnv.cached });
+    const machine = newMachine({ ...def, vscodePort: ports[def.id] });
     machines.push(machine);
     spaces.watch(machine);
     attention.watch(machine);

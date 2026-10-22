@@ -35,8 +35,20 @@ Running spaceherd on a machine needs Node.js there for `npm install`.
 
 - **Which space is active:** herdr writes `"{hostname}: {workspace}"` as the
   window title of the terminal it runs in. The app is that terminal. The
-  hostname picks the machine; that machine's herdr socket gives the focused
-  workspace. Keep herdr's `ui.window_title` at its default.
+  hostname picks the machine, and that machine's herdr focus picks the space.
+  An SSH machine's hostname is learned on its first connection and
+  remembered. Keep herdr's `ui.window_title` at its default. At startup herdr
+  shows alone until its space has held for a second, so spaces it passes
+  through while restoring don't load VS Code.
+
+  *Temporary:* the title's space name is ignored because of
+  [herdr#3200](https://github.com/herdrdev/herdr/issues/3200): for a space
+  that was never renamed, herdr's title names the directory it was created
+  from. The herdr focus is shared by every client attached to a machine, so
+  while another herdr client (for example herdr running on that machine
+  itself) switches spaces, VS Code follows it. Renaming a space once fixes
+  its title in herdr too. Once the issue is fixed, spaceherd should prefer
+  the title's space name again (see `resolveSpace` in `src/main/spaces.js`).
 - **VS Code per space:** off until you turn it on with *View → VS Code for
   This Space* (Ctrl+Cmd+E; Ctrl+Alt+Shift+E on Linux). The choice is kept per
   space. Turning it off closes that space's view and its extension host.

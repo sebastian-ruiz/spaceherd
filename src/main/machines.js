@@ -238,7 +238,11 @@ class SshMachine extends Machine {
       execFile('ssh', [...this.sshArgs(['-o', 'ConnectTimeout=10']), cmd], { env: this.env }, (err, stdout) => {
         if (err) return reject(err);
         const [home, hostname] = stdout.trim().split('\n');
-        if (hostname) this.hostnames.push(hostname.toLowerCase());
+        const h = hostname?.toLowerCase();
+        if (h && !this.hostnames.includes(h)) {
+          this.hostnames.push(h);
+          this.emit('hostname', h);
+        }
         resolve((this.home = home));
       });
     });

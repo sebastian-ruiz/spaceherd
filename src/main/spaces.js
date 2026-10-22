@@ -9,6 +9,11 @@
 const { EventEmitter } = require('events');
 const { debug } = require('./config');
 
+// At startup herdr restores its session and may pass through several spaces
+// (and machines) before it rests on one. Until the space has held this long,
+// herdr shows alone and no VS Code view loads.
+const SETTLE_MS = 1000;
+
 function parseTitle(title) {
   const m = title.match(/^(\S+): (.*)$/);
   return m ? { host: m[1], label: m[2] } : null;
@@ -43,37 +48,41 @@ class Spaces extends EventEmitter {
   watch(machine) {
     machine.on('focus', () => this.update());
     machine.on('snapshot', () => this.update());
+    machine.on('hostname', () => this.update());
   }
 
   onTitle(title) {
     debug('title', JSON.stringify(title));
     this.title = parseTitle(title);
-    this.titleAt = Date.now();
     this.update();
   }
 
+  // The machine the title names. Without a title, the machine whose focus
+  // changed last. A host no machine knows yet (an SSH machine's hostname is
+  // learned on connecting) gives none: guessing would show another space.
   activeMachine() {
-    if (this.title) {
-      const byHost = this.machines.find((m) => m.matchesHost(this.title.host));
-      if (byHost) return byHost;
-    }
-    // Title missing or host unknown: the machine whose focus changed last.
+    if (this.title) return this.machines.find((m) => m.matchesHost(this.title.host));
     return [...this.machines].sort((a, b) => b.lastFocusAt - a.lastFocusAt)[0];
   }
 
-  // The focused space, or { message } when there is none yet.
+  // The focused space, or { message } when there is none yet. The title's
+  // hostname picks the machine; the machine's herdr focus picks the space.
+  //
+  // TEMPORARY: herdr bug https://github.com/herdrdev/herdr/issues/3200.
+  // For a space that was never renamed, herdr's title names the directory the
+  // space was created from, often the space created before it, while the
+  // sidebar and the server's focus are right. So the title's label is ignored
+  // for now. Once the issue is fixed, prefer the label again when it names
+  // exactly one space: the title is this window's own view, while the
+  // server's focus is shared with every client attached to it (herdr on the
+  // other machine, another spaceherd), and the title also arrives a moment
+  // before the focus event.
   resolveSpace() {
     const machine = this.activeMachine();
-    const snap = machine?.snapshot;
+    if (!machine) return { message: `Waiting for ${this.title.host}…` };
+    const snap = machine.snapshot;
     if (!snap) return { message: this.title ? `No connection to ${this.title.host} yet…` : 'Waiting for herdr…' };
-    let workspace = snap.workspaces.find((w) => w.workspace_id === snap.focused_workspace_id);
-    // The title arrives with herdr's redraw, 5-25 ms before the focus event.
-    // If it is the newer signal and its label names exactly one workspace,
-    // switch on it instead of waiting.
-    if (this.title && this.titleAt > machine.lastFocusAt && workspace?.label !== this.title.label) {
-      const byLabel = snap.workspaces.filter((w) => w.label === this.title.label);
-      if (byLabel.length === 1) workspace = byLabel[0];
-    }
+    const workspace = snap.workspaces.find((w) => w.workspace_id === snap.focused_workspace_id);
     if (!workspace) return { message: 'No workspace focused.' };
     return { machine, snap, workspace, key: `${machine.id}:${workspace.workspace_id}` };
   }
@@ -106,6 +115,21 @@ class Spaces extends EventEmitter {
   async update() {
     const target = this.resolve();
     const id = target.closed ? `closed|${target.key || ''}` : target.message || `${target.key}|${target.folder}`;
+    if (!this.settled) {
+      if (!target.key) {
+        clearTimeout(this.settleTimer);
+        this.settling = null;
+      } else if (this.settling !== id) {
+        clearTimeout(this.settleTimer);
+        this.settling = id;
+        this.settleTimer = setTimeout(() => {
+          debug('settled on', id);
+          this.settled = true;
+          this.update();
+        }, SETTLE_MS);
+      }
+      return;
+    }
     if (id === this.current) return;
     debug('update ->', id);
     this.current = id;
