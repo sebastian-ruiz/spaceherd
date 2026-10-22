@@ -58,6 +58,8 @@ Running spaceherd on a machine needs Node.js there for `npm install`.
   shared by every spaceherd that uses the machine, locally or over SSH, and
   the server keeps running when the app quits. If another server with a
   different token holds the port, the VS Code pane says so.
+- **Title bar:** dark or light to match herdr's theme, judged from the
+  backgrounds herdr draws, not from the system appearance.
 - **Shortcuts:** VS Code's shortcuts work while herdr has focus, as from
   VS Code's own terminal: the keys VS Code's terminal hands to VS Code move
   focus to VS Code and act there. On macOS that is every `Cmd` key except

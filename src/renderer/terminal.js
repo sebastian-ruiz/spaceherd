@@ -98,6 +98,56 @@ window.addEventListener(
 );
 term.onBinary((d) => cm.write(d));
 
+// Whether herdr's theme is dark, from the backgrounds it draws, so the
+// window's title bar can match. Cells on the default background count as
+// that background (the theme's, dark); a light herdr theme paints its own.
+const ANSI = [
+  0x2e3436, 0xcc0000, 0x4e9a06, 0xc4a000, 0x3465a4, 0x75507b, 0x06989a, 0xd3d7cf,
+  0x555753, 0xef2929, 0x8ae234, 0xfce94f, 0x729fcf, 0xad7fa8, 0x34e2e2, 0xeeeeec,
+];
+function paletteColor(i) {
+  if (i < 16) return ANSI[i];
+  if (i < 232) {
+    const level = (n) => (n ? 55 + n * 40 : 0);
+    const n = i - 16;
+    return (level(Math.floor(n / 36)) << 16) | (level(Math.floor(n / 6) % 6) << 8) | level(n % 6);
+  }
+  const g = 8 + (i - 232) * 10;
+  return (g << 16) | (g << 8) | g;
+}
+function isDarkColor(rgb) {
+  const r = (rgb >> 16) & 255, g = (rgb >> 8) & 255, b = rgb & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b < 128;
+}
+function herdrLooksDark() {
+  const buffer = term.buffer.active;
+  let dark = 0;
+  let light = 0;
+  const cell = buffer.getNullCell();
+  for (let y = 0; y < term.rows; y += 2) {
+    const line = buffer.getLine(buffer.viewportY + y);
+    if (!line) continue;
+    for (let x = 0; x < term.cols; x += 4) {
+      if (!line.getCell(x, cell) || cell.isInverse() || cell.isBgDefault()) continue;
+      const rgb = cell.isBgRGB() ? cell.getBgColor() : paletteColor(cell.getBgColor());
+      if (isDarkColor(rgb)) dark++;
+      else light++;
+    }
+  }
+  return light <= dark;
+}
+let lastAppearance = null;
+let appearanceTimer = null;
+term.onWriteParsed(() => {
+  clearTimeout(appearanceTimer);
+  appearanceTimer = setTimeout(() => {
+    const appearance = herdrLooksDark() ? 'dark' : 'light';
+    if (appearance === lastAppearance) return;
+    lastAppearance = appearance;
+    cm.appearance(appearance);
+  }, 500);
+});
+
 // Files dragged from VS Code's explorer paste their paths into herdr's
 // focused pane, relative to its directory.
 window.addEventListener('dragover', (e) => {

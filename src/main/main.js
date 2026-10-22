@@ -1,6 +1,6 @@
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { app, BrowserWindow, WebContentsView, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, WebContentsView, Menu, ipcMain, nativeTheme } = require('electron');
 const { loadConfig, state, CONFIG_PATH, debug, migrateDir } = require('./config');
 const { createMachine, herdrSavedMachines } = require('./machines');
 const { VSCodeViews } = require('./vscode-views');
@@ -273,6 +273,11 @@ ipcMain.on('pty:resize', (_e, cols, rows) => herdrPty?.resize(cols, rows));
 ipcMain.on('terminal:title', (_e, title) => spaces.onTitle(title));
 ipcMain.on('terminal:osc', (_e, code, payload) => attention.onOsc(code, payload));
 ipcMain.on('terminal:bell', () => attention.onBell());
+// The title bar (and menus) follow herdr's theme rather than the system's.
+ipcMain.on('terminal:appearance', (_e, mode) => {
+  debug('herdr appearance', mode);
+  nativeTheme.themeSource = mode;
+});
 ipcMain.on('terminal:debug', (_e, msg) => debug('[terminal]', msg));
 // Files dropped on herdr from VS Code, as text for herdr's focused pane. The
 // files and the pane are on the same machine: the one herdr is showing.
@@ -293,6 +298,8 @@ ipcMain.on('layout:drag', (_e, screenX) => {
 });
 
 app.whenReady().then(() => {
+  // Dark until herdr has drawn: the terminal's own background is dark.
+  nativeTheme.themeSource = 'dark';
   config = loadConfig();
   state.load();
   shellEnv.cached = shellEnv();
