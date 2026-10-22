@@ -175,9 +175,25 @@ function createWindow() {
   terminalView.webContents.on('focus', () => debug('terminal view focused'));
   terminalView.webContents.on('blur', () => debug('terminal view blurred'));
 
-  views = new VSCodeViews(win, { maxLive: config.maxLiveViews, onViewCreated: setUpVSCodeView });
+  views = new VSCodeViews(win, {
+    maxLive: config.maxLiveViews,
+    idleMinutes: config.idleViewMinutes,
+    onViewCreated: setUpVSCodeView,
+  });
   layout();
   win.on('resize', layout);
+  // Close the VS Code views first, as a browser closes tabs, so each server
+  // ends their extension hosts now instead of keeping them for a reconnect.
+  // Quitting goes through here too: the window closes, then the app quits.
+  let viewsClosed = false;
+  win.on('close', (event) => {
+    if (viewsClosed) return;
+    event.preventDefault();
+    views.closeAll().then(() => {
+      viewsClosed = true;
+      win?.close();
+    });
+  });
   win.on('closed', () => { win = null; });
 
   machines = config.machines.map((def) => createMachine(def, { env: shellEnv.cached }));

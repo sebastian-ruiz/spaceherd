@@ -1,6 +1,11 @@
 // One WebContentsView per space, kept alive while hidden so switching back is
 // a visibility flip instead of a reload. The least recently used views are
-// destroyed beyond `maxLive`.
+// closed beyond `maxLive`, and views not shown for `idleMinutes`.
+//
+// A view's extension host runs on the machine's VS Code server, and the
+// server keeps it running for a while after an abrupt disconnect, in case the
+// window comes back. Closing a view as a browser closes a tab (running its
+// unload handlers) lets VS Code end the extension host right away.
 
 const { WebContentsView, shell } = require('electron');
 
@@ -14,15 +19,23 @@ function messagePage(text) {
 }
 
 class VSCodeViews {
-  constructor(win, { maxLive = 6, onViewCreated = () => {} } = {}) {
+  constructor(win, { maxLive = 4, idleMinutes = 30, onViewCreated = () => {} } = {}) {
     this.win = win;
     this.maxLive = maxLive;
     this.onViewCreated = onViewCreated;
-    this.views = new Map(); // key -> { view, url, lastUsed }
+    this.views = new Map(); // key -> { view, url, lastUsed, closing }
     this.activeKey = null;
     this.bounds = { x: 0, y: 0, width: 0, height: 0 };
     this.message = this.createView(null);
     this.message.webContents.loadURL(messagePage('Waiting for herdr…'));
+    if (idleMinutes > 0) {
+      setInterval(() => {
+        const cutoff = Date.now() - idleMinutes * 60000;
+        for (const [key, entry] of this.views) {
+          if (key !== this.activeKey && entry.lastUsed < cutoff) this.close(key);
+        }
+      }, 60000);
+    }
   }
 
   createView(partition) {
@@ -50,7 +63,7 @@ class VSCodeViews {
     const started = performance.now();
     let entry = this.views.get(key);
     if (entry && entry.url !== url) {
-      this.destroy(key);
+      this.close(key, { force: true });
       entry = null;
     }
     const cold = !entry;
@@ -60,6 +73,7 @@ class VSCodeViews {
       entry.view.webContents.loadURL(url);
       this.views.set(key, entry);
     }
+    this.leaveActive();
     entry.lastUsed = Date.now();
     this.setActive(entry.view);
     this.activeKey = key;
@@ -69,8 +83,15 @@ class VSCodeViews {
 
   showMessage(text) {
     this.message.webContents.loadURL(messagePage(text));
+    this.leaveActive();
     this.setActive(this.message);
     this.activeKey = null;
+  }
+
+  // Idle time counts from when a view was last on screen.
+  leaveActive() {
+    const entry = this.views.get(this.activeKey);
+    if (entry) entry.lastUsed = Date.now();
   }
 
   setActive(target) {
@@ -96,19 +117,48 @@ class VSCodeViews {
   }
 
   evict() {
-    const lru = [...this.views.entries()].sort((a, b) => a[1].lastUsed - b[1].lastUsed);
-    while (lru.length > this.maxLive) {
-      const [key] = lru.shift();
-      if (key !== this.activeKey) this.destroy(key);
-    }
+    const lru = [...this.views.entries()]
+      .filter(([key, entry]) => key !== this.activeKey && !entry.closing)
+      .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+    const open = lru.length + (this.views.has(this.activeKey) ? 1 : 0);
+    for (const [key] of lru.slice(0, Math.max(0, open - this.maxLive))) this.close(key);
   }
 
-  destroy(key) {
+  // Closes like a browser tab, so VS Code shuts its extension host down. If
+  // VS Code objects (e.g. unsaved changes it cannot back up), the view stays
+  // open, unless `force`. Resolves once the view is gone or kept.
+  close(key, { force = false } = {}) {
     const entry = this.views.get(key);
-    if (!entry) return;
-    this.win.contentView.removeChildView(entry.view);
-    entry.view.webContents.close();
-    this.views.delete(key);
+    if (!entry || entry.closing) return entry?.closing || Promise.resolve();
+    const wc = entry.view.webContents;
+    // Forced: the key is free for a new view at once.
+    if (force) this.views.delete(key);
+    entry.closing = new Promise((resolve) => {
+      const vetoed = (event) => {
+        if (force) return event.preventDefault(); // close anyway
+        wc.off('destroyed', done);
+        entry.closing = null;
+        console.log(`[views] ${key} kept open: VS Code prevented unload`);
+        resolve();
+      };
+      const done = () => {
+        wc.off('will-prevent-unload', vetoed);
+        if (this.views.get(key) === entry) this.views.delete(key);
+        if (!this.win.isDestroyed()) this.win.contentView.removeChildView(entry.view);
+        console.log(`[views] ${key} closed`);
+        resolve();
+      };
+      wc.once('will-prevent-unload', vetoed);
+      wc.once('destroyed', done);
+    });
+    wc.close({ waitForBeforeUnload: true });
+    return entry.closing;
+  }
+
+  // For quitting: close every view, giving up after `timeoutMs`.
+  closeAll({ timeoutMs = 3000 } = {}) {
+    const all = [...this.views.keys()].map((key) => this.close(key, { force: true }));
+    return Promise.race([Promise.all(all), new Promise((r) => setTimeout(r, timeoutMs))]);
   }
 
   reload(key = this.activeKey) {

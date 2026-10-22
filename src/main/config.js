@@ -34,7 +34,11 @@ const DEFAULT_CONFIG = {
   ],
   // "machineId:workspaceLabel" -> folder, wins over the pinned folder.
   folderOverrides: {},
-  maxLiveViews: 6,
+  // VS Code views kept loaded for instant switching. Each one also runs an
+  // extension host on its machine's server. Views not shown for
+  // idleViewMinutes are closed too (0: never).
+  maxLiveViews: 4,
+  idleViewMinutes: 30,
   // Written into VS Code's user settings in every view, for settings that
   // VS Code reads only from there (see src/main/vscode-settings.js). These
   // win over changes made in VS Code.

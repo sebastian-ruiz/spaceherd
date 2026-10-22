@@ -42,7 +42,12 @@ Running spaceherd on a machine needs Node.js there for `npm install`.
   `folderOverrides` in the config wins over both.
 - **VS Code:** one `code serve-web` per machine on a fixed port, and one
   Electron view per space. Views stay loaded while hidden, so switching back is
-  instant. The `maxLiveViews` most recently used views are kept. The server
+  instant. The `maxLiveViews` most recently used views are kept, and views
+  not shown for `idleViewMinutes` are closed. Each loaded view also runs an
+  extension host (with its language servers) on its machine's server; views
+  are closed the way a browser closes a tab, also when the app quits, so the
+  server ends those right away. Coming back to a closed view reloads it,
+  which takes a few seconds. The server
   and its token (`~/.config/spaceherd/vscode-token` on that machine) are
   shared by every spaceherd that uses the machine, locally or over SSH, and
   the server keeps running when the app quits. If another server with a
@@ -71,7 +76,8 @@ Config File*):
     { "id": "local", "type": "local", "hostnames": ["my-mac.local"], "vscodePort": 47800 }
   ],
   "folderOverrides": { "desktop:my-space": "/home/me/src/my-project" },
-  "maxLiveViews": 6,
+  "maxLiveViews": 4,
+  "idleViewMinutes": 30,
   "vscodeUserSettings": { "window.menuBarVisibility": "classic" },
   "terminalWidth": 0.42,
   "terminal": { "fontFamily": "MesloLGS NF, Menlo, monospace", "fontSize": 13, "macOptionIsMeta": false }
