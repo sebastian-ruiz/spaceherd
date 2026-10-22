@@ -37,7 +37,41 @@ function sendRelease(reason) {
   cm.debug(`synthesized mouse release (${reason})`);
   cm.write(`\x1b[<${b};${x};${y}m`);
 }
+// herdr answers a focus-in report (ESC [ I) by switching its mouse modes off
+// and on again. If that lands during the click that focused the terminal,
+// xterm drops the drag it is tracking, so selecting text right after coming
+// from VS Code fails. Hold focus-in back until the button is up.
+let buttonDown = false;
+let focusInHeld = false;
+function flushFocusIn() {
+  if (!focusInHeld || buttonDown) return;
+  focusInHeld = false;
+  cm.write('\x1b[I');
+}
+window.addEventListener('mousedown', () => { buttonDown = true; }, true);
+window.addEventListener('mousemove', (e) => {
+  if (buttonDown && e.buttons === 0) {
+    buttonDown = false;
+    flushFocusIn();
+  }
+}, true);
+window.addEventListener('blur', () => {
+  buttonDown = false;
+  flushFocusIn();
+});
+
 term.onData((d) => {
+  if (d === '\x1b[I') {
+    // The focus usually arrives just before the click's mousedown.
+    focusInHeld = true;
+    setTimeout(flushFocusIn, 50);
+    return;
+  }
+  if (d === '\x1b[O' && focusInHeld) {
+    // herdr never saw the focus-in, so it still thinks it is unfocused.
+    focusInHeld = false;
+    return;
+  }
   for (const [, bs, x, y, kind] of d.matchAll(/\x1b\[<(\d+);(\d+);(\d+)([Mm])/g)) {
     const b = Number(bs);
     const motion = (b & 32) !== 0;
@@ -53,7 +87,12 @@ window.addEventListener(
   (e) => {
     cm.debug('terminal page mouseup');
     // Let xterm send its own release first; only fill in if it didn't.
-    if (e.buttons === 0) setTimeout(() => sendRelease('mouseup'), 0);
+    if (e.buttons !== 0) return;
+    buttonDown = false;
+    setTimeout(() => {
+      sendRelease('mouseup');
+      flushFocusIn();
+    }, 0);
   },
   true,
 );
