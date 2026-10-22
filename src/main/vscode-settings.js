@@ -69,7 +69,7 @@ function merged(text, settings) {
   const current = jsonc.parse(text || '{}') || {};
   let out = text.trim() ? text : '{}\n';
   for (const [key, value] of Object.entries(settings)) {
-    if (JSON.stringify(current[key]) === JSON.stringify(value)) continue;
+    if (value === null || JSON.stringify(current[key]) === JSON.stringify(value)) continue;
     const edits = jsonc.modify(out, [key], value, { formattingOptions: { insertSpaces: true, tabSize: 4 } });
     out = jsonc.applyEdits(out, edits);
   }

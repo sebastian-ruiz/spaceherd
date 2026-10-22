@@ -105,10 +105,15 @@ file. Two ways to set them without doing it by hand in every machine's view:
   `settings.json` shares those settings. VS Code skips application-scoped
   settings in this file.
 - `vscodeUserSettings` in the config, written into the user settings of every
-  view when it loads. Use it for application-scoped settings, such as the
-  menu bar (`"window.menuBarVisibility": "classic"`, the default here; VS Code
-  in a browser otherwise shows a menu button). These values win over changes
-  made in VS Code. The first time a machine's view gets them, it reloads once.
+  view when it loads, for application-scoped settings and for settings meant
+  only for spaceherd's VS Code. These values win over changes made in VS
+  Code. The first time a machine's view gets them, it reloads once. The
+  defaults: the full menu bar (`window.menuBarVisibility: "classic"`; VS Code
+  in a browser otherwise shows a menu button), no chat or built-in AI
+  (`chat.disableAIFeatures`), no terminal panel when a view opens
+  (`terminal.integrated.hideOnStartup: "always"`), and the secondary side bar
+  hidden for new folders. Entries in the config are added to these; `null`
+  drops a default.
 
 ### SSH machines
 

@@ -39,10 +39,20 @@ const DEFAULT_CONFIG = {
   // idleViewMinutes are closed too (0: never).
   maxLiveViews: 4,
   idleViewMinutes: 30,
-  // Written into VS Code's user settings in every view, for settings that
-  // VS Code reads only from there (see src/main/vscode-settings.js). These
-  // win over changes made in VS Code.
-  vscodeUserSettings: { 'window.menuBarVisibility': 'classic' },
+  // Written into VS Code's user settings in every view (see
+  // src/main/vscode-settings.js); they win over changes made in VS Code. The
+  // config's own entries are added to these; null drops one, leaving that
+  // setting to VS Code.
+  vscodeUserSettings: {
+    // VS Code in a browser otherwise hides the menus behind a button.
+    'window.menuBarVisibility': 'classic',
+    // herdr is the terminal and the place for agents: no chat or built-in AI,
+    // and no terminal panel when a view opens.
+    'chat.disableAIFeatures': true,
+    'terminal.integrated.hideOnStartup': 'always',
+    // Chat's side bar, for folders VS Code hasn't opened before.
+    'workbench.secondarySideBar.defaultVisibility': 'hidden',
+  },
   terminalWidth: 0.42,
   terminal: {
     fontFamily: 'MesloLGS NF, JetBrainsMono Nerd Font, Menlo, monospace',
@@ -76,6 +86,7 @@ function loadConfig() {
     ...user,
     herdr: { ...DEFAULT_CONFIG.herdr, ...user.herdr },
     terminal: { ...DEFAULT_CONFIG.terminal, ...user.terminal },
+    vscodeUserSettings: { ...DEFAULT_CONFIG.vscodeUserSettings, ...user.vscodeUserSettings },
   };
 }
 
