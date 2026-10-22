@@ -49,6 +49,8 @@ function chord(input) {
 
 function forwardsToVSCode(input, platform = process.platform) {
   if (input.type !== 'keyDown' || input.isAutoRepeat) return false;
+  // Cmd, Ctrl, Shift or Alt pressed on its own, before the key it goes with.
+  if (/^(Meta|Control|Shift|Alt|OS)/.test(input.code)) return false;
   const c = chord(input);
   if (platform === 'darwin') return input.meta && !input.control && !MAC_KEEP.has(c);
   return LINUX.has(c);
