@@ -6,7 +6,7 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper"
+    "postinstall": "node scripts/postinstall.js"
   },
   "devDependencies": {
     "electron": "44.9.3"

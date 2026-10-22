@@ -9,7 +9,7 @@ const { Attention } = require('./attention');
 const { HerdrPty } = require('./pty');
 const { forwardsToVSCode, asInputEvent, chord } = require('./shortcuts');
 
-app.setName('spaceherd');
+app.setName('Spaceherd');
 // Electron data (VS Code's per-machine state, cookies) lived under the old
 // app name; move it before anything opens it.
 // SPACEHERD_DIR isolates everything, including this.
