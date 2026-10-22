@@ -8,6 +8,7 @@ const { Spaces } = require('./spaces');
 const { Attention } = require('./attention');
 const { HerdrPty } = require('./pty');
 const { forwardsToVSCode, asInputEvent, chord } = require('./shortcuts');
+const { applyUserSettings } = require('./vscode-settings');
 
 app.setName('Spaceherd');
 // Electron data (VS Code's per-machine state, cookies) lived under the old
@@ -65,6 +66,13 @@ function focusTerminal() {
 function focusVSCode() {
   focusIntent.target = 'vscode';
   views.focus();
+}
+
+function setUpVSCodeView(webContents) {
+  guardVSCodeFocus(webContents);
+  webContents.on('did-finish-load', () => {
+    applyUserSettings(webContents, config.vscodeUserSettings).catch((err) => console.warn('VS Code user settings:', err.message));
+  });
 }
 
 function guardVSCodeFocus(webContents) {
@@ -166,7 +174,7 @@ function createWindow() {
   terminalView.webContents.on('focus', () => debug('terminal view focused'));
   terminalView.webContents.on('blur', () => debug('terminal view blurred'));
 
-  views = new VSCodeViews(win, { maxLive: config.maxLiveViews, onViewCreated: guardVSCodeFocus });
+  views = new VSCodeViews(win, { maxLive: config.maxLiveViews, onViewCreated: setUpVSCodeView });
   layout();
   win.on('resize', layout);
   win.on('closed', () => { win = null; });

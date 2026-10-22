@@ -35,6 +35,10 @@ const DEFAULT_CONFIG = {
   // "machineId:workspaceLabel" -> folder, wins over the pinned folder.
   folderOverrides: {},
   maxLiveViews: 6,
+  // Written into VS Code's user settings in every view, for settings that
+  // VS Code reads only from there (see src/main/vscode-settings.js). These
+  // win over changes made in VS Code.
+  vscodeUserSettings: { 'window.menuBarVisibility': 'classic' },
   terminalWidth: 0.42,
   terminal: {
     fontFamily: 'MesloLGS NF, JetBrainsMono Nerd Font, Menlo, monospace',

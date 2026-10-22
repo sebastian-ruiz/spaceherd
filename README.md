@@ -72,6 +72,7 @@ Config File*):
   ],
   "folderOverrides": { "desktop:my-space": "/home/me/src/my-project" },
   "maxLiveViews": 6,
+  "vscodeUserSettings": { "window.menuBarVisibility": "classic" },
   "terminalWidth": 0.42,
   "terminal": { "fontFamily": "MesloLGS NF, Menlo, monospace", "fontSize": 13, "macOptionIsMeta": false }
 }
@@ -79,6 +80,21 @@ Config File*):
 
 Ports must stay fixed: VS Code keeps its state per origin, which includes the
 port.
+
+### VS Code settings
+
+VS Code in a browser keeps its user settings in the page's storage, not in a
+file. Two ways to set them without doing it by hand in every machine's view:
+
+- `~/.vscode-server/data/Machine/settings.json` on each machine, read by its
+  VS Code server for every client. A symlink to the desktop app's
+  `settings.json` shares those settings. VS Code skips application-scoped
+  settings in this file.
+- `vscodeUserSettings` in the config, written into the user settings of every
+  view when it loads. Use it for application-scoped settings, such as the
+  menu bar (`"window.menuBarVisibility": "classic"`, the default here; VS Code
+  in a browser otherwise shows a menu button). These values win over changes
+  made in VS Code. The first time a machine's view gets them, it reloads once.
 
 ### SSH machines
 
