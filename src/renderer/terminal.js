@@ -142,6 +142,8 @@ function resize() {
 new ResizeObserver(() => resize()).observe(document.getElementById('terminal'));
 
 const divider = document.getElementById('divider');
+// Only while the space has VS Code open.
+cm.onDivider((show) => { divider.hidden = !show; });
 divider.addEventListener('pointerdown', (e) => {
   divider.setPointerCapture(e.pointerId);
   divider.classList.add('dragging');

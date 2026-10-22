@@ -62,7 +62,11 @@ class VSCodeViews {
   show(key, { url, partition }) {
     const started = performance.now();
     let entry = this.views.get(key);
-    if (entry && entry.url !== url) {
+    if (entry?.closing) {
+      // Reopened while closing: let it finish and start a new view.
+      this.views.delete(key);
+      entry = null;
+    } else if (entry && entry.url !== url) {
       this.close(key, { force: true });
       entry = null;
     }
@@ -79,6 +83,13 @@ class VSCodeViews {
     this.activeKey = key;
     this.evict();
     console.log(`[switch] ${key} ${cold ? 'cold' : 'warm'} at ${Date.now()} (view swap ${(performance.now() - started).toFixed(1)} ms)`);
+  }
+
+  // No VS Code for the current space: herdr has the window to itself.
+  hide() {
+    this.leaveActive();
+    for (const v of [this.message, ...[...this.views.values()].map((e) => e.view)]) v.setVisible(false);
+    this.activeKey = null;
   }
 
   showMessage(text) {

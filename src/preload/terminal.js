@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('cm', {
   onData: (cb) => ipcRenderer.on('pty:data', (_e, data) => cb(data)),
   onConfig: (cb) => ipcRenderer.on('terminal:config', (_e, cfg) => cb(cfg)),
   onFocus: (cb) => ipcRenderer.on('terminal:focus', () => cb()),
+  onDivider: (cb) => ipcRenderer.on('terminal:divider', (_e, show) => cb(show)),
   write: (data) => ipcRenderer.send('pty:write', data),
   resize: (cols, rows) => ipcRenderer.send('pty:resize', cols, rows),
   title: (title) => ipcRenderer.send('terminal:title', title),

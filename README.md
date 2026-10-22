@@ -1,7 +1,8 @@
 # spaceherd
 
-herdr on the left, VS Code on the right. Switching a space in herdr switches
-VS Code to that space's folder, locally or on an SSH machine.
+herdr, with VS Code beside it for the spaces you want it in. Switching a space
+in herdr switches VS Code to that space's folder, locally or on an SSH
+machine. Spaces without VS Code show herdr across the whole window.
 
 ## Run
 
@@ -36,10 +37,15 @@ Running spaceherd on a machine needs Node.js there for `npm install`.
   window title of the terminal it runs in. The app is that terminal. The
   hostname picks the machine; that machine's herdr socket gives the focused
   workspace. Keep herdr's `ui.window_title` at its default.
-- **Which folder:** the working directory of the first pane in the space's
-  first tab, pinned the first time the space is seen, so a `cd` doesn't move
-  VS Code. *View → Pin VS Code Folder to Focused Pane* re-pins it.
-  `folderOverrides` in the config wins over both.
+- **VS Code per space:** off until you turn it on with *View → VS Code for
+  This Space* (Ctrl+Cmd+E; Ctrl+Alt+Shift+E on Linux). The choice is kept per
+  space. Turning it off closes that space's view and its extension host.
+  Switching between a space with VS Code and one without resizes herdr, so
+  the programs in its panes redraw.
+- **Which folder:** the focused pane's working directory when you turn VS
+  Code on, pinned, so a later `cd` doesn't move VS Code. *View → Pin VS Code
+  Folder to Focused Pane* re-pins it. `folderOverrides` in the config wins
+  over both.
 - **VS Code:** one `code serve-web` per machine on a fixed port, and one
   Electron view per space. Views stay loaded while hidden, so switching back is
   instant. The `maxLiveViews` most recently used views are kept, and views
@@ -127,6 +133,7 @@ same `id` as herdr's label overrides the imported one, e.g. to set
 |---|---|
 | Ctrl+Cmd+← | Focus terminal |
 | Ctrl+Cmd+→ | Focus VS Code |
+| Ctrl+Cmd+E | VS Code for this space, on or off |
 
 Cmd+W, Cmd+Z and other editor keys go to VS Code; the app menu only takes
 cut, copy and paste.

@@ -43,10 +43,14 @@ function shellEnv() {
 let win, terminalView, views, spaces, attention, herdrPty, machines;
 let config;
 
+// Whether the focused space has VS Code open. Without it herdr gets the
+// whole window.
+let vscodeVisible = false;
+
 function layout() {
   if (!win) return;
   const { width, height } = win.getContentBounds();
-  const termWidth = Math.round(width * state.get('terminalWidth', config.terminalWidth));
+  const termWidth = vscodeVisible ? Math.round(width * state.get('terminalWidth', config.terminalWidth)) : width;
   terminalView.setBounds({ x: 0, y: 0, width: termWidth, height });
   views.setBounds({ x: termWidth, y: 0, width: width - termWidth, height });
 }
@@ -122,6 +126,13 @@ function buildMenu() {
         { label: 'Focus Terminal', accelerator: 'Ctrl+Cmd+Left', click: focusTerminal },
         { label: 'Focus VS Code', accelerator: 'Ctrl+Cmd+Right', click: focusVSCode },
         { type: 'separator' },
+        {
+          id: 'vscode-toggle',
+          label: 'VS Code for This Space',
+          type: 'checkbox',
+          accelerator: process.platform === 'darwin' ? 'Ctrl+Cmd+E' : 'Ctrl+Alt+Shift+E',
+          click: () => spaces.toggleVSCode(),
+        },
         { label: 'Pin VS Code Folder to Focused Pane', click: () => spaces.repinToFocusedPane() },
         { label: 'Reload VS Code View', click: () => views.reload() },
         { type: 'separator' },
@@ -198,6 +209,15 @@ function createWindow() {
 
   machines = config.machines.map((def) => createMachine(def, { env: shellEnv.cached }));
   spaces = new Spaces({ machines, views, config, state });
+  spaces.on('layout', (open) => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById('vscode-toggle');
+    if (item) item.checked = open;
+    if (open === vscodeVisible) return;
+    vscodeVisible = open;
+    layout();
+    terminalView.webContents.send('terminal:divider', open);
+    if (!open && focusIntent.target === 'vscode') focusTerminal();
+  });
   spaces.on('changed', (target) => {
     win?.setTitle(target ? `${target.workspace.label} — ${target.machine.id}` : 'spaceherd');
   });
