@@ -9,6 +9,7 @@ const { Attention } = require('./attention');
 const { HerdrPty } = require('./pty');
 const { forwardsToVSCode, asInputEvent, chord } = require('./shortcuts');
 const { applyUserSettings } = require('./vscode-settings');
+const { dropText } = require('./drop');
 
 app.setName('Spaceherd');
 // Electron data (VS Code's per-machine state, cookies) lived under the old
@@ -237,6 +238,14 @@ ipcMain.on('terminal:title', (_e, title) => spaces.onTitle(title));
 ipcMain.on('terminal:osc', (_e, code, payload) => attention.onOsc(code, payload));
 ipcMain.on('terminal:bell', () => attention.onBell());
 ipcMain.on('terminal:debug', (_e, msg) => debug('[terminal]', msg));
+// Files dropped on herdr from VS Code, as text for herdr's focused pane. The
+// files and the pane are on the same machine: the one herdr is showing.
+ipcMain.handle('terminal:drop', (_e, data) => {
+  const machine = spaces.activeMachine();
+  const snap = machine?.snapshot;
+  const pane = snap?.panes.find((p) => p.pane_id === snap.focused_pane_id);
+  return dropText(data, { cwd: pane?.foreground_cwd || pane?.cwd, home: machine?.home });
+});
 let saveWidthTimer;
 ipcMain.on('layout:drag', (_e, screenX) => {
   const { x, width } = win.getContentBounds();

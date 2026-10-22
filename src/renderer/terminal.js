@@ -97,6 +97,22 @@ window.addEventListener(
   true,
 );
 term.onBinary((d) => cm.write(d));
+
+// Files dragged from VS Code's explorer paste their paths into herdr's
+// focused pane, relative to its directory.
+window.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+window.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  const dt = e.dataTransfer;
+  cm.debug(`drop types=${JSON.stringify([...dt.types])}`);
+  const text = await cm.dropText({ resources: dt.getData('ResourceURLs'), text: dt.getData('text/plain') });
+  if (!text) return;
+  term.focus();
+  term.paste(text);
+});
 term.onTitleChange((t) => cm.title(t));
 term.onBell(() => cm.bell());
 for (const code of [9, 777]) {

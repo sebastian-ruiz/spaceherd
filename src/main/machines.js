@@ -133,6 +133,7 @@ class Machine extends EventEmitter {
 
 class LocalMachine extends Machine {
   start() {
+    this.home = os.homedir();
     const socket = this.def.herdrSocket || path.join(os.homedir(), '.config', 'herdr', 'herdr.sock');
     this.connectHerdr(socket);
     this.vscodeReady = this.startServeWeb();

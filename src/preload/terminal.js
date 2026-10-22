@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld('cm', {
   dragDivider: (screenX) => ipcRenderer.send('layout:drag', screenX),
   ready: () => ipcRenderer.send('terminal:ready'),
   debug: (msg) => ipcRenderer.send('terminal:debug', msg),
+  dropText: (data) => ipcRenderer.invoke('terminal:drop', data),
 });
