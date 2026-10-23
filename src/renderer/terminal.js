@@ -102,29 +102,115 @@ term.onBinary((d) => cm.write(d));
 // pointer, as in VS Code's terminal. herdr has mouse reporting on, so xterm's
 // own link handling never sees clicks; take this one before xterm sends it.
 const LINK_CHAR = /[\w.~\-\/+@%=:#?&!$*,;]/;
+const BORDER = /[\u2500-\u257f]/; // box drawing: herdr's pane borders
+const isLink = (ch) => LINK_CHAR.test(ch || '');
+
+function rowChars(row) {
+  const line = term.buffer.active.getLine(term.buffer.active.viewportY + row);
+  if (!line) return null;
+  const cell = term.buffer.active.getNullCell();
+  const chars = [];
+  for (let x = 0; x < term.cols; x++) chars.push(line.getCell(x, cell) ? cell.getChars() : '');
+  return chars;
+}
+
+// The pane around column `col` of a row: from just after the border on its
+// left to just before the border on its right (or the window's edges).
+function paneSpan(chars, col) {
+  let left = col;
+  while (left > 0 && !BORDER.test(chars[left - 1] || '')) left--;
+  let right = col;
+  while (right < chars.length - 1 && !BORDER.test(chars[right + 1] || '')) right++;
+  return { left, right };
+}
+
+// herdr draws each pane row on its own, so a path the program in the pane
+// wrapped is just two rows here. A run of link characters that reaches the
+// pane's right edge continues at the start of the next row (after any
+// indent), and one that starts a row continues from the end of the row
+// before it, if that row's text reaches the edge.
 function textAround(clientX, clientY) {
   const screen = term.element.querySelector('.xterm-screen').getBoundingClientRect();
   const col = Math.floor(((clientX - screen.left) / screen.width) * term.cols);
   const row = Math.floor(((clientY - screen.top) / screen.height) * term.rows);
-  const line = term.buffer.active.getLine(term.buffer.active.viewportY + row);
-  if (!line || col < 0 || col >= term.cols) return '';
-  const cell = term.buffer.active.getNullCell();
-  const chars = [];
-  for (let x = 0; x < term.cols; x++) chars.push(line.getCell(x, cell) ? cell.getChars() : '');
-  if (!LINK_CHAR.test(chars[col] || '')) return '';
+  const chars = rowChars(row);
+  if (!chars || col < 0 || col >= term.cols || !isLink(chars[col])) return '';
+  const pane = paneSpan(chars, col);
   let start = col;
   let end = col;
-  while (start > 0 && LINK_CHAR.test(chars[start - 1] || '')) start--;
-  while (end < term.cols - 1 && LINK_CHAR.test(chars[end + 1] || '')) end++;
+  while (start > pane.left && isLink(chars[start - 1])) start--;
+  while (end < pane.right && isLink(chars[end + 1])) end++;
+  let text = chars.slice(start, end + 1).join('');
+
+  // Forwards, while the run ends at the pane's right edge.
+  for (let r = row + 1, e = end; e === pane.right && r < term.rows; r++) {
+    const next = rowChars(r);
+    let i = pane.left;
+    while (i <= pane.right && next[i] === ' ') i++;
+    if (!isLink(next[i])) break;
+    let j = i;
+    while (j < pane.right && isLink(next[j + 1])) j++;
+    text += next.slice(i, j + 1).join('');
+    e = j;
+  }
+  // Backwards, while the run starts the row (after indent) and the row above
+  // ends with link characters at the pane's right edge.
+  for (let r = row - 1, s = start, cur = chars; r >= 0; r--) {
+    let i = pane.left;
+    while (i < s && cur[i] === ' ') i++;
+    if (i !== s) break;
+    const prev = rowChars(r);
+    if (!isLink(prev[pane.right])) break;
+    let j = pane.right;
+    while (j > pane.left && isLink(prev[j - 1])) j--;
+    text = prev.slice(j, pane.right + 1).join('') + text;
+    s = j;
+    cur = prev;
+  }
   // Sentence punctuation after a link or path isn't part of it.
-  return chars.slice(start, end + 1).join('').replace(/[.,;:!?]+$/, '');
+  return text.replace(/[.,;:!?]+$/, '');
 }
+// The text under the pointer if it is a URL or a path (a slash or a file
+// extension, optionally :line:col), as src/main/links.js decides; else ''.
+function linkAt(x, y) {
+  const text = textAround(x, y);
+  const file = text.replace(/(:\d+){1,2}$/, '');
+  return /^https?:\/\//.test(text) || file.includes('/') || /\.[A-Za-z0-9]+$/.test(file) ? text : '';
+}
+
+const isMac = navigator.platform.startsWith('Mac');
+const linkModifier = (e) => (isMac ? e.metaKey : e.ctrlKey);
+
+// While the modifier is held over a link, show the hand cursor, as terminals
+// do. Checked on mouse moves and when the modifier goes down or up.
+let pointer = null;
+let hoverFrame = 0;
+function updateLinkHover(modifierDown) {
+  const over = modifierDown && pointer && linkAt(pointer.x, pointer.y) !== '';
+  document.body.classList.toggle('link-hover', !!over);
+}
+window.addEventListener(
+  'mousemove',
+  (e) => {
+    pointer = { x: e.clientX, y: e.clientY };
+    const down = linkModifier(e);
+    cancelAnimationFrame(hoverFrame);
+    hoverFrame = requestAnimationFrame(() => updateLinkHover(down));
+  },
+  true,
+);
+for (const type of ['keydown', 'keyup']) {
+  window.addEventListener(type, (e) => {
+    if (e.key === (isMac ? 'Meta' : 'Control')) updateLinkHover(type === 'keydown');
+  }, true);
+}
+window.addEventListener('blur', () => updateLinkHover(false));
+
 window.addEventListener(
   'mousedown',
   (e) => {
-    const modifier = navigator.platform.startsWith('Mac') ? e.metaKey : e.ctrlKey;
-    if (e.button !== 0 || !modifier) return;
-    const text = textAround(e.clientX, e.clientY);
+    if (e.button !== 0 || !linkModifier(e)) return;
+    const text = linkAt(e.clientX, e.clientY);
     if (!text) return;
     e.preventDefault();
     e.stopImmediatePropagation();

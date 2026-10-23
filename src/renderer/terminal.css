@@ -26,3 +26,9 @@ body {
 #divider.dragging {
   background: #0078d4;
 }
+
+/* Cmd (Ctrl) held over a link in the terminal; see terminal.js. */
+body.link-hover #terminal,
+body.link-hover #terminal * {
+  cursor: pointer !important;
+}
