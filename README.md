@@ -4,7 +4,23 @@ herdr, with VS Code beside it for the spaces you want it in. Switching a space
 in herdr switches VS Code to that space's folder, locally or on an SSH
 machine. Spaces without VS Code show herdr across the whole window.
 
-## Run
+## Install
+
+Download the latest build for your system from
+[Releases](https://github.com/sebastian-ruiz/spaceherd/releases):
+
+- **macOS:** `Spaceherd-<version>-mac-arm64.dmg` (Apple silicon) or
+  `-mac-x64.dmg` (Intel). Drag Spaceherd into Applications. The app isn't
+  signed with an Apple Developer ID yet, so macOS blocks it on first launch;
+  allow it once with
+  `xattr -dr com.apple.quarantine /Applications/Spaceherd.app`
+  (or *System Settings → Privacy & Security → Open Anyway*).
+- **Linux:** the `.deb` (`sudo apt install ./Spaceherd-<version>-linux-<arch>.deb`)
+  or the `.AppImage` (`chmod +x` it and run it). AppImages need FUSE 2
+  (`libfuse2` on Ubuntu). On Ubuntu 24.04 and later, AppArmor may stop
+  Electron's sandbox in an AppImage; the `.deb` doesn't have that problem.
+
+## Run from source
 
 ```sh
 npm install
@@ -165,6 +181,20 @@ same `id` as herdr's label overrides the imported one, e.g. to set
 
 Cmd+W, Cmd+Z and other editor keys go to VS Code; the app menu only takes
 cut, copy and paste.
+
+## Releasing
+
+Set the version in `package.json` (`npm version 0.2.0 --no-git-tag-version`),
+commit, then tag and push:
+
+```sh
+git tag v0.2.0 && git push && git push origin v0.2.0
+```
+
+The *Release* workflow builds macOS (arm64, x64) and Linux (x64, arm64) and
+publishes a GitHub Release with the files. Run it by hand from the Actions
+tab to only build; the files are kept as workflow artifacts. `npm run dist`
+builds for the current system into `dist/`.
 
 ## Debugging
 

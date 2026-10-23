@@ -7,10 +7,12 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "postinstall": "node scripts/postinstall.js"
+    "postinstall": "node scripts/postinstall.js",
+    "dist": "electron-builder --publish never"
   },
   "devDependencies": {
-    "electron": "44.9.3"
+    "electron": "44.9.3",
+    "electron-builder": "26.15.3"
   },
   "dependencies": {
     "@xterm/addon-fit": "0.11.0",
@@ -22,5 +24,77 @@
   "allowScripts": {
     "electron@44.9.3": true,
     "node-pty@1.1.0": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sebastian-ruiz/spaceherd.git"
+  },
+  "author": "Sebastian Ruiz <me@sruiz.uk>",
+  "homepage": "https://github.com/sebastian-ruiz/spaceherd",
+  "build": {
+    "appId": "io.github.sebastian-ruiz.spaceherd",
+    "productName": "Spaceherd",
+    "files": [
+      "src/**/*",
+      "package.json",
+      "LICENSE"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/node-pty/**"
+    ],
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "publish": {
+      "provider": "github",
+      "owner": "sebastian-ruiz",
+      "repo": "spaceherd",
+      "releaseType": "release"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "notarize": false
+    },
+    "linux": {
+      "category": "Development",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "maintainer": "Sebastian Ruiz <me@sruiz.uk>"
+    }
   }
 }
