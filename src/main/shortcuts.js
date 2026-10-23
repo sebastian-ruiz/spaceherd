@@ -22,7 +22,8 @@ const LINUX = new Set([
 
 // macOS: the shell never sees Cmd, so as in VS Code's terminal every Cmd key
 // reaches VS Code, except spaceherd's menu keys and the system ones.
-const MAC_KEEP = new Set(['cmd+c', 'cmd+v', 'cmd+x', 'cmd+q', 'cmd+w', 'cmd+h', 'alt+cmd+h', 'cmd+m', 'cmd+tab', 'cmd+`']);
+// Cmd+Enter is a new line for agents in herdr (see src/renderer/terminal.js).
+const MAC_KEEP = new Set(['cmd+c', 'cmd+v', 'cmd+x', 'cmd+q', 'cmd+w', 'cmd+h', 'alt+cmd+h', 'cmd+m', 'cmd+tab', 'cmd+`', 'cmd+enter']);
 
 const PUNCTUATION = {
   Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']',

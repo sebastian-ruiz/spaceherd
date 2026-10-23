@@ -98,6 +98,16 @@ window.addEventListener(
 );
 term.onBinary((d) => cm.write(d));
 
+// Cmd+Enter and Shift+Enter insert a new line in Claude Code and other
+// agents. xterm sends both as a plain Enter, which submits; send ESC Enter
+// (Meta+Enter), which they read as a new line, as VS Code's terminal does
+// after Claude Code's /terminal-setup.
+term.attachCustomKeyEventHandler((e) => {
+  if (e.key !== 'Enter' || e.ctrlKey || e.altKey || !(e.metaKey || e.shiftKey)) return true;
+  if (e.type === 'keydown') cm.write('\x1b\r');
+  return false;
+});
+
 // Whether herdr's theme is dark, from the backgrounds it draws, so the
 // window's title bar can match. Cells on the default background count as
 // that background (the theme's, dark); a light herdr theme paints its own.
