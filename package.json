@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "herdr on the left, VS Code on the right, switching together",
+  "license": "MIT",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",

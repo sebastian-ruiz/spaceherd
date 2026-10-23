@@ -15,6 +15,12 @@ Requirements: [herdr](https://herdr.dev) and VS Code's `code` CLI on your
 `PATH`, on every machine you use. The first start of `code serve-web` on a
 machine downloads the VS Code server, which takes a minute or two.
 
+spaceherd starts VS Code's server (`code serve-web`) with
+`--accept-server-license-terms`, so using spaceherd means accepting the
+[Visual Studio Code Server license terms](https://aka.ms/vscode-server-license)
+and the [Microsoft Privacy Statement](https://privacy.microsoft.com/en-US/privacystatement).
+They are Microsoft's terms for that server, separate from spaceherd's license.
+
 The left pane attaches to your normal herdr session, the same one you get by
 running `herdr` in any terminal. Closing the app detaches; agents keep running.
 
@@ -170,3 +176,8 @@ SPACEHERD_DIR=/tmp/sh npm start # separate config and state
 Set `"herdr": { "args": ["--session", "test"] }` and the local machine's
 `"herdrSocket": "~/.config/herdr/sessions/test/herdr.sock"` (absolute path) to
 try it against a throwaway herdr session.
+
+## License
+
+spaceherd is MIT licensed; see [LICENSE](LICENSE). herdr, VS Code and the npm
+dependencies are separate projects under their own licenses.
