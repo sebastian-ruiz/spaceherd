@@ -1,7 +1,7 @@
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { app, BrowserWindow, WebContentsView, Menu, ipcMain, nativeTheme } = require('electron');
-const { loadConfig, state, CONFIG_PATH, debug, migrateDir } = require('./config');
+const { loadConfig, state, CONFIG_PATH, debug } = require('./config');
 const { createMachine, herdrSavedMachines } = require('./machines');
 const { VSCodeViews } = require('./vscode-views');
 const { Spaces } = require('./spaces');
@@ -12,16 +12,12 @@ const { applyUserSettings } = require('./vscode-settings');
 const { dropText } = require('./drop');
 
 app.setName('Spaceherd');
-// Electron data (VS Code's per-machine state, cookies) lived under the old
-// app name; move it before anything opens it.
+// Electron data (VS Code's per-machine state, cookies) goes in a fixed
+// "spaceherd" folder rather than one named after the app's display name.
 // SPACEHERD_DIR isolates everything, including this.
-if (process.env.SPACEHERD_DIR) {
-  app.setPath('userData', path.join(process.env.SPACEHERD_DIR, 'electron'));
-} else {
-  const userData = path.join(app.getPath('appData'), 'spaceherd');
-  migrateDir(path.join(app.getPath('appData'), 'Code Manager'), userData);
-  app.setPath('userData', userData);
-}
+app.setPath('userData', process.env.SPACEHERD_DIR
+  ? path.join(process.env.SPACEHERD_DIR, 'electron')
+  : path.join(app.getPath('appData'), 'spaceherd'));
 
 // Apps started from Finder get a minimal PATH. Take PATH from a login shell
 // so `herdr`, `code` and `ssh` resolve the same way as in a terminal.

@@ -187,11 +187,6 @@ class LocalMachine extends Machine {
 function remoteScript({ remotePort, codeCommand }) {
   return [
     'umask 077',
-    // Renamed from code-manager: keep the token the running server uses.
-    '[ -d ~/.config/spaceherd ] || [ ! -d ~/.config/code-manager ] || mv ~/.config/code-manager ~/.config/spaceherd',
-    // A serve-web started before the move still answers, but every code server
-    // it spawns fails to read the old token path. Replace it.
-    `pkill -f 'serve-web .*code-manager/vscode-token' && sleep 1`,
     'mkdir -p ~/.config/spaceherd',
     'f=~/.config/spaceherd/vscode-token',
     `[ -s "$f" ] || od -An -N24 -tx1 /dev/urandom | tr -d ' \\n' > "$f"`,

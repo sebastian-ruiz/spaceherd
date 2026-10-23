@@ -4,18 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-// The app was called code-manager before; move its files over once.
-function migrateDir(oldPath, newPath) {
-  if (fs.existsSync(newPath) || !fs.existsSync(oldPath)) return;
-  try {
-    fs.renameSync(oldPath, newPath);
-  } catch (err) {
-    console.warn(`Could not move ${oldPath} to ${newPath}: ${err.message}`);
-  }
-}
-
 const DIR = process.env.SPACEHERD_DIR || path.join(os.homedir(), '.config', 'spaceherd');
-if (!process.env.SPACEHERD_DIR) migrateDir(path.join(os.homedir(), '.config', 'code-manager'), DIR);
 const CONFIG_PATH = path.join(DIR, 'config.json');
 const STATE_PATH = path.join(DIR, 'state.json');
 
@@ -118,7 +107,6 @@ const debug = process.env.SPACEHERD_DEBUG ? (...args) => console.log(Date.now(),
 
 module.exports = {
   debug,
-  migrateDir,
   DIR,
   CONFIG_PATH,
   loadConfig,

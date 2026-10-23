@@ -11,10 +11,6 @@ npm install
 npm start
 ```
 
-Earlier versions were called *code-manager*; on first start spaceherd moves
-`~/.config/code-manager`, its saved VS Code state, and the folder of the same
-name on SSH machines to their new names.
-
 Requirements: [herdr](https://herdr.dev) and VS Code's `code` CLI on your
 `PATH`, on every machine you use. The first start of `code serve-web` on a
 machine downloads the VS Code server, which takes a minute or two.
