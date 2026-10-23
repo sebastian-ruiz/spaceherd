@@ -10,6 +10,8 @@ const { HerdrPty } = require('./pty');
 const { forwardsToVSCode, asInputEvent, chord } = require('./shortcuts');
 const { applyUserSettings } = require('./vscode-settings');
 const { dropText } = require('./drop');
+const { parseLink } = require('./links');
+const { workbenchReady, quickOpen } = require('./quick-open');
 
 app.setName('Spaceherd');
 // Electron data (VS Code's per-machine state, cookies) goes in a fixed
@@ -299,6 +301,23 @@ ipcMain.handle('terminal:drop', (_e, data) => {
   const pane = snap?.panes.find((p) => p.pane_id === snap.focused_pane_id);
   return dropText(data, { cwd: pane?.foreground_cwd || pane?.cwd, home: machine?.home });
 });
+// Cmd+click in herdr. Files open in the space's VS Code, which is turned on
+// for the space if it was off.
+ipcMain.on('terminal:open-link', async (_e, text) => {
+  const space = spaces.resolveSpace();
+  if (space.message) return;
+  const pane = space.snap.panes.find((p) => p.pane_id === space.snap.focused_pane_id);
+  const link = parseLink(text, { cwd: pane?.foreground_cwd || pane?.cwd, home: space.machine.home });
+  debug('open link', text, JSON.stringify(link));
+  if (!link) return;
+  if (link.url) return require('electron').shell.openExternal(link.url);
+  if (!spaces.isOpen(space.key)) spaces.toggleVSCode();
+  const webContents = await workbenchReady(() => views.views.get(space.key)?.view.webContents);
+  if (!webContents) return;
+  focusVSCode();
+  await quickOpen(webContents, [link.file, link.line, link.column].filter(Boolean).join(':'));
+});
+
 let saveWidthTimer;
 ipcMain.on('layout:drag', (_e, screenX) => {
   const { x, width } = win.getContentBounds();

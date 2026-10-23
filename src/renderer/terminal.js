@@ -98,6 +98,42 @@ window.addEventListener(
 );
 term.onBinary((d) => cm.write(d));
 
+// Cmd+click (Ctrl+click elsewhere) opens the URL or file path under the
+// pointer, as in VS Code's terminal. herdr has mouse reporting on, so xterm's
+// own link handling never sees clicks; take this one before xterm sends it.
+const LINK_CHAR = /[\w.~\-\/+@%=:#?&!$*,;]/;
+function textAround(clientX, clientY) {
+  const screen = term.element.querySelector('.xterm-screen').getBoundingClientRect();
+  const col = Math.floor(((clientX - screen.left) / screen.width) * term.cols);
+  const row = Math.floor(((clientY - screen.top) / screen.height) * term.rows);
+  const line = term.buffer.active.getLine(term.buffer.active.viewportY + row);
+  if (!line || col < 0 || col >= term.cols) return '';
+  const cell = term.buffer.active.getNullCell();
+  const chars = [];
+  for (let x = 0; x < term.cols; x++) chars.push(line.getCell(x, cell) ? cell.getChars() : '');
+  if (!LINK_CHAR.test(chars[col] || '')) return '';
+  let start = col;
+  let end = col;
+  while (start > 0 && LINK_CHAR.test(chars[start - 1] || '')) start--;
+  while (end < term.cols - 1 && LINK_CHAR.test(chars[end + 1] || '')) end++;
+  // Sentence punctuation after a link or path isn't part of it.
+  return chars.slice(start, end + 1).join('').replace(/[.,;:!?]+$/, '');
+}
+window.addEventListener(
+  'mousedown',
+  (e) => {
+    const modifier = navigator.platform.startsWith('Mac') ? e.metaKey : e.ctrlKey;
+    if (e.button !== 0 || !modifier) return;
+    const text = textAround(e.clientX, e.clientY);
+    if (!text) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    cm.debug(`open link ${JSON.stringify(text)}`);
+    cm.openLink(text);
+  },
+  true,
+);
+
 // Shift+Enter inserts a new line in Claude Code and other agents. xterm
 // sends it as a plain Enter, which submits; send ESC Enter (Meta+Enter),
 // which they read as a new line, as VS Code's terminal does after Claude

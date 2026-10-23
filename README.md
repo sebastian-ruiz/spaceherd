@@ -66,6 +66,12 @@ Running spaceherd on a machine needs Node.js there for `npm install`.
   shared by every spaceherd that uses the machine, locally or over SSH, and
   the server keeps running when the app quits. If another server with a
   different token holds the port, the VS Code pane says so.
+- **Links:** Cmd+click (Ctrl+click on Linux) on a URL or file path in herdr
+  opens it: URLs in the browser, files in the space's VS Code (turned on if
+  it was off) through Quick Open, at `path:line:col` when given. Relative
+  paths resolve from the focused pane's directory. herdr takes plain clicks;
+  links are found in the visible text, so a hyperlink whose label isn't its
+  target isn't opened.
 - **Title bar:** dark or light to match herdr's theme, judged from the
   backgrounds herdr draws, not from the system appearance.
 - **Shortcuts:** VS Code's shortcuts work while herdr has focus, as from
@@ -149,6 +155,7 @@ same `id` as herdr's label overrides the imported one, e.g. to set
 | Ctrl+Cmd+← | Focus terminal |
 | Ctrl+Cmd+→ | Focus VS Code |
 | Ctrl+Cmd+E | VS Code for this space, on or off |
+| Cmd+click in herdr | Open the URL (browser) or file path (this space's VS Code) under the pointer |
 
 Cmd+W, Cmd+Z and other editor keys go to VS Code; the app menu only takes
 cut, copy and paste.

@@ -15,4 +15,5 @@ contextBridge.exposeInMainWorld('cm', {
   ready: () => ipcRenderer.send('terminal:ready'),
   debug: (msg) => ipcRenderer.send('terminal:debug', msg),
   dropText: (data) => ipcRenderer.invoke('terminal:drop', data),
+  openLink: (text) => ipcRenderer.send('terminal:open-link', text),
 });
