@@ -126,23 +126,33 @@ Running spaceherd on a machine needs Node.js there for `npm install`.
 
 ## Configuration
 
-`~/.config/spaceherd/config.json`, created on first start (*View → Open
-Config File*):
+`~/.config/spaceherd/config.json` (*View → Open Config File*). It starts out
+empty: add only what you want to change, so new defaults in later versions
+still reach you. The options, with their defaults:
 
 ```json
 {
   "herdr": { "command": "herdr", "args": [] },
   "machines": [
-    { "id": "local", "type": "local", "hostnames": ["my-mac.local"], "vscodePort": 47800 }
+    { "id": "local", "type": "local", "hostnames": ["<this machine's hostname>"], "vscodePort": 47800 }
   ],
-  "folderOverrides": { "desktop:my-space": "/home/me/src/my-project" },
+  "folderOverrides": {},
+  "updates": "auto",
   "maxLiveViews": 4,
   "idleViewMinutes": 30,
-  "vscodeUserSettings": { "window.menuBarVisibility": "classic" },
+  "vscodeUserSettings": {},
   "terminalWidth": 0.42,
-  "terminal": { "fontFamily": "MesloLGS NF, Menlo, monospace", "fontSize": 13, "macOptionIsMeta": false }
+  "terminal": { "fontFamily": "MesloLGS NF, JetBrainsMono Nerd Font, Menlo, monospace", "fontSize": 13, "macOptionIsMeta": false }
 }
 ```
+
+- `herdr`, `terminal` and `vscodeUserSettings` are merged with the defaults;
+  other entries replace them.
+- `machines` lists machines beyond those saved in herdr (which are added
+  automatically; see below), or overrides the local one. A list given here
+  replaces the default, so keep the local machine in it.
+- `folderOverrides`: `"machineId:workspaceLabel": "/path"` fixes a space's
+  VS Code folder, e.g. `{ "desktop:my-space": "/home/me/src/my-project" }`.
 
 Ports must stay fixed: VS Code keeps its state per origin, which includes the
 port.

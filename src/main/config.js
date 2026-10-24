@@ -71,7 +71,9 @@ function writeJson(file, value, mode = 0o644) {
 
 function loadConfig() {
   ensureDir();
-  if (!fs.existsSync(CONFIG_PATH)) writeJson(CONFIG_PATH, DEFAULT_CONFIG);
+  // Created empty: entries override the defaults above, and copies of the
+  // defaults would keep later releases' defaults from taking effect.
+  if (!fs.existsSync(CONFIG_PATH)) writeJson(CONFIG_PATH, {});
   const user = readJson(CONFIG_PATH, {});
   return {
     ...DEFAULT_CONFIG,
