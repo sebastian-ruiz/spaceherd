@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('cm', {
   onData: (cb) => ipcRenderer.on('pty:data', (_e, data) => cb(data)),
@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('cm', {
   dragDivider: (screenX) => ipcRenderer.send('layout:drag', screenX),
   ready: () => ipcRenderer.send('terminal:ready'),
   debug: (msg) => ipcRenderer.send('terminal:debug', msg),
-  dropText: (data) => ipcRenderer.invoke('terminal:drop', data),
+  // Files dropped from outside the app (Finder, a file manager) carry no
+  // text; their paths are only readable here.
+  dropText: (data, files = []) =>
+    ipcRenderer.invoke('terminal:drop', { ...data, files: files.map((f) => webUtils.getPathForFile(f)).filter(Boolean) }),
   openLink: (text) => ipcRenderer.send('terminal:open-link', text),
 });

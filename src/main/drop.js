@@ -1,13 +1,16 @@
-// Turns files dragged from VS Code's explorer into text to paste into herdr:
-// paths relative to the focused pane's directory, absolute when outside it.
+// Turns files dragged from VS Code's explorer, or from outside the app, into
+// text to paste into herdr: paths relative to the focused pane's directory,
+// absolute when outside it.
 
 const path = require('path').posix;
 
 // VS Code puts the dragged files' URIs in "ResourceURLs" as JSON
 // (fillEditorsDragData in src/vs/workbench/browser/dnd.ts), e.g.
 // "vscode-remote://127.0.0.1:47801/home/me/proj/app.py". Its text/plain is a
-// display label, possibly with "~", so it's only the fallback.
-function droppedPaths({ resources, text }, { home }) {
+// display label, possibly with "~", so it's only the fallback. Files from
+// outside the app come as local paths in `files`.
+function droppedPaths({ resources, text, files }, { home }) {
+  if (files?.length) return files;
   try {
     const uris = JSON.parse(resources || '[]');
     if (uris.length) return uris.map((u) => decodeURIComponent(new URL(u).pathname));

@@ -280,8 +280,8 @@ term.onWriteParsed(() => {
   }, 500);
 });
 
-// Files dragged from VS Code's explorer paste their paths into herdr's
-// focused pane, relative to its directory.
+// Files dragged from VS Code's explorer, or from outside the app, paste their
+// paths into herdr's focused pane, relative to its directory.
 window.addEventListener('dragover', (e) => {
   e.preventDefault();
   e.dataTransfer.dropEffect = 'copy';
@@ -290,7 +290,10 @@ window.addEventListener('drop', async (e) => {
   e.preventDefault();
   const dt = e.dataTransfer;
   cm.debug(`drop types=${JSON.stringify([...dt.types])}`);
-  const text = await cm.dropText({ resources: dt.getData('ResourceURLs'), text: dt.getData('text/plain') });
+  const text = await cm.dropText(
+    { resources: dt.getData('ResourceURLs'), text: dt.getData('text/plain') },
+    [...dt.files],
+  );
   if (!text) return;
   term.focus();
   term.paste(text);

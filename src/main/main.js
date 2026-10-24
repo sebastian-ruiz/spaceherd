@@ -323,13 +323,15 @@ ipcMain.on('terminal:appearance', (_e, mode) => {
   nativeTheme.themeSource = mode;
 });
 ipcMain.on('terminal:debug', (_e, msg) => debug('[terminal]', msg));
-// Files dropped on herdr from VS Code, as text for herdr's focused pane. The
-// files and the pane are on the same machine: the one herdr is showing.
+// Files dropped on herdr, as text for herdr's focused pane. Files from VS Code
+// are on the machine herdr is showing. Files from outside the app are on this
+// one, so on an SSH machine they paste as they are, absolute.
 ipcMain.handle('terminal:drop', (_e, data) => {
   const machine = spaces.activeMachine();
   const snap = machine?.snapshot;
   const pane = snap?.panes.find((p) => p.pane_id === snap.focused_pane_id);
-  return dropText(data, { cwd: pane?.foreground_cwd || pane?.cwd, home: machine?.home });
+  const sameMachine = !data.files?.length || machine?.def.type !== 'ssh';
+  return dropText(data, { cwd: sameMachine ? pane?.foreground_cwd || pane?.cwd : null, home: machine?.home });
 });
 // Cmd+click in herdr. Files open in the space's VS Code, which is turned on
 // for the space if it was off.
