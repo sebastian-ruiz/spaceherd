@@ -2,11 +2,7 @@
   <img src="build/icon.png" width="160" alt="Spaceherd icon: a sheep floating in space">
 </p>
 
-
-
-https://github.com/user-attachments/assets/2b10bc63-c04f-4bf7-9a0c-1e21ef559c9d
-
-
+https://github.com/user-attachments/assets/6d37b0dc-0b68-4786-a199-82bfb95acb1c
 
 # spaceherd
 
