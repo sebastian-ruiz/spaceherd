@@ -81,9 +81,15 @@ running `herdr` in any terminal. Closing the app detaches; agents keep running.
 | Cmd+K in herdr | Clear the screen (sends Ctrl+L) |
 | Cmd+F in herdr | Search the focused pane's output (herdr's copy mode, `prefix+[` then `?`) |
 | Cmd+= / Cmd+- / Cmd+0 | Terminal font size: bigger / smaller / back to the configured size |
+| Ctrl+Shift+C / Ctrl+Shift+V (Linux) | Copy / paste in the terminal; Ctrl+C and Ctrl+V stay with the shell |
 
 Cmd+W, Cmd+Z and other editor keys go to VS Code; the app menu only takes
 cut, copy and paste.
+
+To copy from herdr, drag-select: herdr copies when you let go. It reaches the
+clipboard itself where it can, and otherwise through the terminal (OSC 52),
+which spaceherd passes on, so this also works on Linux and for herdr on an SSH
+machine. Right-click belongs to herdr's own menus.
 
 ### Laptop and desktop
 

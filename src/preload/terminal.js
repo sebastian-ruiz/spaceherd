@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('cm', {
   resize: (cols, rows) => ipcRenderer.send('pty:resize', cols, rows),
   title: (title) => ipcRenderer.send('terminal:title', title),
   osc: (code, payload) => ipcRenderer.send('terminal:osc', code, payload),
+  clipboard: (payload) => ipcRenderer.send('terminal:clipboard', payload),
   bell: () => ipcRenderer.send('terminal:bell'),
   appearance: (mode) => ipcRenderer.send('terminal:appearance', mode),
   dragDivider: (screenX) => ipcRenderer.send('layout:drag', screenX),

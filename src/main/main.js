@@ -1,6 +1,6 @@
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { app, BrowserWindow, WebContentsView, Menu, ipcMain, nativeTheme } = require('electron');
+const { app, BrowserWindow, WebContentsView, Menu, ipcMain, nativeTheme, clipboard, webContents } = require('electron');
 const { loadConfig, state, CONFIG_PATH, debug } = require('./config');
 const { createMachine, herdrSavedMachines } = require('./machines');
 const { VSCodeViews } = require('./vscode-views');
@@ -68,6 +68,18 @@ function layout() {
 const focusIntent = { target: 'terminal', vscodeInputAt: 0 };
 
 const isUserInput = (input) => input.type === 'mouseDown' || input.type === 'rawKeyDown';
+
+// Linux terminals copy and paste with Ctrl+Shift+C/V, since Ctrl+C and Ctrl+V
+// belong to the shell. Copy takes xterm's own selection (Shift+drag); herdr's
+// selections are copied when the mouse is let go.
+function terminalKeys(input) {
+  if (process.platform !== 'linux' || input.type !== 'keyDown') return false;
+  const c = chord(input);
+  if (c === 'ctrl+shift+c') terminalView.webContents.copy();
+  else if (c === 'ctrl+shift+v') terminalView.webContents.paste();
+  else return false;
+  return true;
+}
 
 function focusTerminal() {
   focusIntent.target = 'terminal';
@@ -138,12 +150,23 @@ function buildMenu() {
           ],
         }
       : { label: 'File', submenu: [{ role: 'quit' }] },
-    {
-      // Only clipboard roles: undo/redo/select-all accelerators would steal
-      // those keys from VS Code's own keybindings.
-      label: 'Edit',
-      submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }],
-    },
+    process.platform === 'darwin'
+      ? {
+          // Only clipboard roles: undo/redo/select-all accelerators would steal
+          // those keys from VS Code's own keybindings.
+          label: 'Edit',
+          submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }],
+        }
+      : {
+          // On Linux the roles' Ctrl+C/X/V would take Ctrl+C from the shell.
+          // The terminal's Ctrl+Shift+C/V are handled with its keys (see
+          // terminalKeys), so the menu only shows them.
+          label: 'Edit',
+          submenu: [
+            { label: 'Copy', accelerator: 'Ctrl+Shift+C', registerAccelerator: false, click: () => webContents.getFocusedWebContents()?.copy() },
+            { label: 'Paste', accelerator: 'Ctrl+Shift+V', registerAccelerator: false, click: () => webContents.getFocusedWebContents()?.paste() },
+          ],
+        },
     {
       label: 'View',
       submenu: [
@@ -205,6 +228,10 @@ function createWindow() {
   // the key press is replayed: focus moves first, so VS Code gets the release
   // itself (Ctrl+Tab's picker opens the editor when Ctrl is let go).
   terminalView.webContents.on('before-input-event', (event, input) => {
+    if (terminalKeys(input)) {
+      event.preventDefault();
+      return;
+    }
     const target = views.activeWebContents();
     if (!target || !forwardsToVSCode(input)) return;
     debug('forward to vscode', chord(input));
@@ -324,6 +351,20 @@ ipcMain.on('terminal:appearance', (_e, mode) => {
   nativeTheme.themeSource = mode;
 });
 ipcMain.on('terminal:debug', (_e, msg) => debug('[terminal]', msg));
+// OSC 52 from herdr: copy to the clipboard. herdr sends it for a selection
+// when it can't reach the clipboard itself (Linux without a clipboard tool, a
+// herdr on an SSH machine), and passes on the ones programs in its panes send.
+// Reading the clipboard ("?") isn't allowed.
+ipcMain.on('terminal:clipboard', (_e, payload) => {
+  const sep = payload.indexOf(';');
+  const targets = payload.slice(0, sep);
+  const data = payload.slice(sep + 1);
+  if (sep < 0 || data === '?' || data.length > 8 * 1024 * 1024) return;
+  const text = Buffer.from(data, 'base64').toString('utf8');
+  debug('osc 52 copy', targets, text.length);
+  if (!targets || /[cs]/.test(targets)) clipboard.writeText(text);
+  if (process.platform === 'linux' && targets.includes('p')) clipboard.writeText(text, 'selection');
+});
 // Files dropped on herdr, as text for herdr's focused pane. Files from VS Code
 // are on the machine herdr is showing. Files from outside the app are on this
 // one, so on an SSH machine they paste as they are, absolute.

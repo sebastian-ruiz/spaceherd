@@ -336,6 +336,10 @@ window.addEventListener('drop', async (e) => {
 });
 term.onTitleChange((t) => cm.title(t));
 term.onBell(() => cm.bell());
+term.parser.registerOscHandler(52, (payload) => {
+  cm.clipboard(payload);
+  return true;
+});
 for (const code of [9, 777]) {
   term.parser.registerOscHandler(code, (payload) => {
     cm.osc(code, payload);
