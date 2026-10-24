@@ -10,6 +10,27 @@ herdr, with VS Code beside it for the spaces you want it in. Switching a space
 in herdr switches VS Code to that space's folder, locally or on an SSH
 machine. Spaces without VS Code show herdr across the whole window.
 
+- **VS Code per space**, turned on when you want it, following the space you
+  pick in herdr
+- **SSH machines** saved in herdr work too, with VS Code running on them
+- **Cmd+click** a file path or URL in herdr to open it; **drag a file** from
+  VS Code into herdr to paste its path
+- **VS Code's shortcuts** work while herdr has focus
+- **Notifications** when an agent is blocked or done
+- **Updates itself** on macOS and as an AppImage on Linux
+
+## Requirements
+
+[herdr](https://herdr.dev) and VS Code's `code` CLI on your `PATH`, on every
+machine you use. The first start of `code serve-web` on a machine downloads
+the VS Code server, which takes a minute or two.
+
+spaceherd starts VS Code's server (`code serve-web`) with
+`--accept-server-license-terms`, so using spaceherd means accepting the
+[Visual Studio Code Server license terms](https://aka.ms/vscode-server-license)
+and the [Microsoft Privacy Statement](https://privacy.microsoft.com/en-US/privacystatement).
+They are Microsoft's terms for that server, separate from spaceherd's license.
+
 ## Install
 
 Download the latest build for your system from
@@ -42,25 +63,21 @@ Updates…* checks now. On Linux the menu item is under *Help*.
 - The **`.deb`** shows a notification when a new version is out.
 - Set `"updates": "off"` in the config to never check.
 
-## Run from source
-
-```sh
-npm install
-npm start
-```
-
-Requirements: [herdr](https://herdr.dev) and VS Code's `code` CLI on your
-`PATH`, on every machine you use. The first start of `code serve-web` on a
-machine downloads the VS Code server, which takes a minute or two.
-
-spaceherd starts VS Code's server (`code serve-web`) with
-`--accept-server-license-terms`, so using spaceherd means accepting the
-[Visual Studio Code Server license terms](https://aka.ms/vscode-server-license)
-and the [Microsoft Privacy Statement](https://privacy.microsoft.com/en-US/privacystatement).
-They are Microsoft's terms for that server, separate from spaceherd's license.
+## Usage
 
 The left pane attaches to your normal herdr session, the same one you get by
 running `herdr` in any terminal. Closing the app detaches; agents keep running.
+
+| Key | Action |
+|---|---|
+| Ctrl+Cmd+← | Focus terminal |
+| Ctrl+Cmd+→ | Focus VS Code |
+| Ctrl+Cmd+E | VS Code for this space, on or off |
+| Cmd+click in herdr | Open the URL (browser) or file path (this space's VS Code) under the pointer |
+| Drag a file from VS Code into herdr | Paste its path into the focused pane |
+
+Cmd+W, Cmd+Z and other editor keys go to VS Code; the app menu only takes
+cut, copy and paste.
 
 ### Laptop and desktop
 
@@ -69,7 +86,6 @@ the laptop with the desktop added as an SSH machine, close the laptop, and run
 spaceherd on the desktop: it attaches to the same herdr session and the same
 VS Code server, so the same spaces, agents and files are there. VS Code's
 open editors and layout are kept per client, so those don't follow you.
-Running spaceherd on a machine needs Node.js there for `npm install`.
 
 ## How it works
 
@@ -202,62 +218,10 @@ the app learns that hostname over SSH. A machine entry in `machines` with the
 same `id` as herdr's label overrides the imported one, e.g. to set
 `codeCommand` or `remotePort`.
 
-## Keys
+## Development
 
-| Key | Action |
-|---|---|
-| Ctrl+Cmd+← | Focus terminal |
-| Ctrl+Cmd+→ | Focus VS Code |
-| Ctrl+Cmd+E | VS Code for this space, on or off |
-| Cmd+click in herdr | Open the URL (browser) or file path (this space's VS Code) under the pointer |
-
-Cmd+W, Cmd+Z and other editor keys go to VS Code; the app menu only takes
-cut, copy and paste.
-
-## Releasing
-
-Releases need the update signing key as the `UPDATE_SIGNING_KEY` Actions
-secret (*Settings → Secrets and variables → Actions*): the Ed25519 private key
-whose public half is in `src/main/update-signature.js`. Keep a backup of it:
-installed apps only accept updates signed with that key. A new key means
-everyone reinstalls once by hand.
-
-Set the version in `package.json` (`npm version 0.2.0 --no-git-tag-version`),
-commit, then tag and push:
-
-```sh
-git tag v0.2.0 && git push && git push origin v0.2.0
-```
-
-The *Release* workflow builds macOS (arm64, x64) and Linux (x64, arm64) and
-publishes a GitHub Release with the files, including a `.sig` signature for
-each update file. Run it by hand from the Actions
-tab to only build; the files are kept as workflow artifacts. `npm run dist`
-builds for the current system into `dist/`.
-
-The app icon is `build/icon.svg`. After changing it, `npm run icon` renders
-`build/icon.png`, which the builds use.
-
-## Demo video
-
-`scripts/demo/demo.sh start` opens spaceherd with made-up projects and
-scripted agents, using its own herdr, VS Code server data and config in
-`~/spaceherd-demo`, so nothing from your own setup shows. `demo.sh reset`
-stops it and deletes that folder. On macOS, `scripts/demo/record.sh` does
-the rest: it clicks through the demo, records the window and writes an MP4
-(see the script for what it needs). Videos aren't kept in the repo: drag the
-MP4 into README.md while editing it on github.com, and GitHub hosts it.
-
-## Debugging
-
-```sh
-SPACEHERD_DEBUG=1 npm start     # timestamped title, event, click and switch logs
-SPACEHERD_DIR=/tmp/sh npm start # separate config and state
-```
-
-Set `"herdr": { "args": ["--session", "test"] }` and the local machine's
-`"herdrSocket": "~/.config/herdr/sessions/test/herdr.sock"` (absolute path) to
-try it against a throwaway herdr session.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for running from source, debugging,
+releasing and recording the demo video.
 
 ## License
 
