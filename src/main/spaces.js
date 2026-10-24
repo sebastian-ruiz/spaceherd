@@ -180,6 +180,14 @@ class Spaces extends EventEmitter {
     this.update();
   }
 
+  // `code DIR` in a pane of the space: VS Code on, at DIR.
+  pinFolder(key, folder) {
+    this.state.setPinned(key, folder);
+    this.setOpen(key, true);
+    this.current = null;
+    this.update();
+  }
+
   // Opening pins the folder the focused pane is in now. Closing closes the
   // view, which ends its extension host on the server.
   toggleVSCode() {

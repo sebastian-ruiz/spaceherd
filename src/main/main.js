@@ -11,6 +11,7 @@ const { forwardsToVSCode, asInputEvent, chord } = require('./shortcuts');
 const { applyUserSettings } = require('./vscode-settings');
 const { dropText } = require('./drop');
 const { findSequence } = require('./herdr-keys');
+const { installCodeCommand, uninstallCodeCommand } = require('./code-command');
 const { parseLink } = require('./links');
 const { workbenchReady, quickOpen } = require('./quick-open');
 const { Updater } = require('./updater');
@@ -132,6 +133,10 @@ function startHerdr() {
 
 function buildMenu() {
   const updateItem = updater.menuItem();
+  const codeItems = [
+    { label: 'Install ‘code’ Command in herdr Panes…', click: () => installCodeCommand(win, machines) },
+    { label: 'Uninstall ‘code’ Command', click: () => uninstallCodeCommand(win, machines) },
+  ];
   const template = [
     process.platform === 'darwin'
       ? {
@@ -139,6 +144,8 @@ function buildMenu() {
           submenu: [
             { role: 'about' },
             updateItem,
+            { type: 'separator' },
+            ...codeItems,
             { type: 'separator' },
             { role: 'services' },
             { type: 'separator' },
@@ -149,7 +156,7 @@ function buildMenu() {
             { role: 'quit' },
           ],
         }
-      : { label: 'File', submenu: [{ role: 'quit' }] },
+      : { label: 'File', submenu: [...codeItems, { type: 'separator' }, { role: 'quit' }] },
     process.platform === 'darwin'
       ? {
           // Only clipboard roles: undo/redo/select-all accelerators would steal
@@ -305,6 +312,7 @@ function newMachine(def) {
     all[def.id] = [...new Set([...(all[def.id] || []), h])];
     state.set('machineHostnames', all);
   });
+  machine.on('open', (pane, request) => openFromPane(machine, pane, request).catch((err) => console.warn('open from pane:', err.message)));
   return machine;
 }
 
@@ -385,12 +393,35 @@ ipcMain.on('terminal:open-link', async (_e, text) => {
   debug('open link', text, JSON.stringify(link));
   if (!link) return;
   if (link.url) return require('electron').shell.openExternal(link.url);
-  if (!spaces.isOpen(space.key)) spaces.toggleVSCode();
-  const webContents = await workbenchReady(() => views.views.get(space.key)?.view.webContents);
+  await openInVSCode(space.key, link);
+});
+
+// A file in the shown space's VS Code, which is turned on if it was off.
+async function openInVSCode(key, link) {
+  if (!spaces.isOpen(key)) spaces.toggleVSCode();
+  const webContents = await workbenchReady(() => views.views.get(key)?.view.webContents);
   if (!webContents) return;
   focusVSCode();
   await quickOpen(webContents, [link.file, link.line, link.column].filter(Boolean).join(':'));
-});
+}
+
+// `spaceherd open` (or `code`, see src/main/spaceherd-cli.sh) in a herdr pane:
+// the pane's space comes forward, as VS Code brings its window forward, and
+// the file opens there. A directory points the space's VS Code at it.
+async function openFromPane(machine, pane, { kind, path: target }) {
+  const key = `${machine.id}:${pane.workspace_id}`;
+  if (spaces.resolveSpace().key !== key) {
+    await machine.herdr.request('workspace.focus', { workspace_id: pane.workspace_id }).catch(() => {});
+    const deadline = Date.now() + 3000;
+    while (spaces.resolveSpace().key !== key) {
+      if (Date.now() > deadline) return console.warn('open from pane: could not switch to', key);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+  if (kind === 'd') return spaces.pinFolder(key, target);
+  const link = parseLink(target, { cwd: pane.foreground_cwd || pane.cwd, home: machine.home });
+  if (link?.file) await openInVSCode(key, link);
+}
 
 let saveWidthTimer;
 ipcMain.on('layout:drag', (_e, screenX) => {

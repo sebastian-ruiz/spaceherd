@@ -27,11 +27,31 @@ const LIFECYCLE_EVENTS = [
   'pane.agent_detected',
 ];
 
+// `spaceherd open` in a pane (src/main/spaceherd-cli.sh) asks through pane
+// tokens: an id, and the request in base64 split over spaceherd_0, _1, ….
+const OPEN_SOURCE = 'spaceherd.open';
+
 // A machine's VS Code server is shared by every spaceherd that uses the
 // machine, locally or over SSH (laptop and desktop), so the token lives in a
 // fixed per-user place on the machine itself. The SSH remote script uses the
 // same path.
 const SHARED_DIR = path.join(os.homedir(), '.config', 'spaceherd');
+
+// The `spaceherd` command for herdr panes, installed on every machine as
+// ~/.config/spaceherd/bin/spaceherd (see src/main/spaceherd-cli.sh).
+const CLI = fs.readFileSync(path.join(__dirname, 'spaceherd-cli.sh'), 'utf8');
+
+function installLocalCli() {
+  const file = path.join(SHARED_DIR, 'bin', 'spaceherd');
+  try {
+    if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === CLI) return;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, CLI);
+    fs.chmodSync(file, 0o755);
+  } catch (err) {
+    console.warn('installing the spaceherd command:', err.message);
+  }
+}
 
 // Resolves once serve-web answers with our token. A 403 means some other
 // server holds the port with a different token; waiting won't fix that.
@@ -53,6 +73,20 @@ function waitForHttp(port, { token, timeoutMs = 300000 } = {}) {
       else setTimeout(attempt, 500);
     };
     attempt();
+  });
+}
+
+// Runs a shell script fed through stdin and resolves with its output.
+function runScript(command, args, script, env) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+    let out = '';
+    let err = '';
+    proc.stdout.on('data', (d) => (out += d));
+    proc.stderr.on('data', (d) => (err += d));
+    proc.on('error', reject);
+    proc.on('close', (code) => (code === 0 ? resolve(out) : reject(new Error(err.trim() || `exit ${code}`))));
+    proc.stdin.end(script);
   });
 }
 
@@ -90,6 +124,10 @@ class Machine extends EventEmitter {
   connectHerdr(socketPath) {
     this.herdr = new HerdrClient(socketPath, { name: this.id });
     this.herdr.on('event', (name, data) => {
+      if (name === 'pane_updated') {
+        this.checkOpenRequest(data.pane);
+        return;
+      }
       debug(`[${this.id}] event ${name}`, JSON.stringify(data));
       if (name === 'workspace_focused') {
         this.lastFocusAt = Date.now();
@@ -100,9 +138,37 @@ class Machine extends EventEmitter {
     });
     this.herdr.on('connected', () => this.refresh());
     this.herdr.on('warn', (msg) => console.warn(msg));
-    this.herdr.subscribe(LIFECYCLE_EVENTS.map((type) => ({ type })));
+    this.herdr.subscribe([...LIFECYCLE_EVENTS, 'pane.updated'].map((type) => ({ type })));
     this.pollTimer = setInterval(() => this.refresh(), POLL_MS);
     this.refresh();
+  }
+
+  // Emits 'open' with the pane and { kind: 'f' | 'd', path } for a new
+  // request, and clears its tokens, which tells the command it was taken.
+  checkOpenRequest(pane) {
+    const tokens = pane?.tokens || {};
+    const id = tokens.spaceherd_id;
+    if (!id || this.openIds?.has(id)) return;
+    let data = '';
+    const keys = ['spaceherd_id'];
+    for (let i = 0; tokens[`spaceherd_${i}`] !== undefined; i++) {
+      data += tokens[`spaceherd_${i}`];
+      keys.push(`spaceherd_${i}`);
+    }
+    const m = Buffer.from(data, 'base64').toString('utf8').match(/^([fd]):(\/.*)$/s);
+    if (!m) return;
+    this.openIds = this.openIds || new Set();
+    this.openIds.add(id);
+    if (this.openIds.size > 50) this.openIds.delete(this.openIds.values().next().value);
+    debug(`[${this.id}] open request`, pane.pane_id, m[1], m[2]);
+    this.herdr
+      .request('pane.report_metadata', {
+        pane_id: pane.pane_id,
+        source: OPEN_SOURCE,
+        tokens: Object.fromEntries(keys.map((k) => [k, null])),
+      })
+      .catch((err) => console.warn(`[${this.id}] clearing open request:`, err.message));
+    this.emit('open', pane, { kind: m[1], path: m[2] });
   }
 
   async refresh() {
@@ -132,12 +198,18 @@ class Machine extends EventEmitter {
 }
 
 class LocalMachine extends Machine {
+  // `args` are plain words, passed to the script as $1, $2, ….
+  run(script, args = []) {
+    return runScript('/bin/sh', ['-s', ...args], script, this.env);
+  }
+
   start() {
     this.home = os.homedir();
     // Where herdr puts it: under $XDG_CONFIG_HOME when that's set.
     const configHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
     const socket = this.def.herdrSocket || path.join(configHome, 'herdr', 'herdr.sock');
     this.connectHerdr(socket);
+    installLocalCli();
     this.vscodeReady = this.startServeWeb();
   }
 
@@ -189,7 +261,11 @@ class LocalMachine extends Machine {
 function remoteScript({ remotePort, codeCommand }) {
   return [
     'umask 077',
-    'mkdir -p ~/.config/spaceherd',
+    'mkdir -p ~/.config/spaceherd/bin',
+    "cat > ~/.config/spaceherd/bin/spaceherd <<'SPACEHERD_CLI'",
+    CLI.trimEnd(),
+    'SPACEHERD_CLI',
+    'chmod 755 ~/.config/spaceherd/bin/spaceherd',
     'f=~/.config/spaceherd/vscode-token',
     `[ -s "$f" ] || od -An -N24 -tx1 /dev/urandom | tr -d ' \\n' > "$f"`,
     // Append: a second start fails on the busy port and must not wipe the
@@ -204,6 +280,10 @@ function remoteScript({ remotePort, codeCommand }) {
 }
 
 class SshMachine extends Machine {
+  run(script, args = []) {
+    return runScript('ssh', [...this.sshArgs(['-o', 'ConnectTimeout=10']), ['sh -s', ...args].join(' ')], script, this.env);
+  }
+
   start() {
     // Unix socket paths are limited to 104 bytes on macOS, so keep it short.
     const sockDir = path.join('/tmp', `spaceherd-${process.getuid()}`);

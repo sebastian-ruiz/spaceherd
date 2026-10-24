@@ -91,6 +91,26 @@ clipboard itself where it can, and otherwise through the terminal (OSC 52),
 which spaceherd passes on, so this also works on Linux and for herdr on an SSH
 machine. Right-click belongs to herdr's own menus.
 
+### Opening files from the terminal
+
+spaceherd installs a `spaceherd` command on every machine it uses, at
+`~/.config/spaceherd/bin/spaceherd`. In a herdr pane,
+`spaceherd open src/app.ts:42` opens the file in that space's VS Code, as
+`code` does in VS Code's own terminal. It turns VS Code on for the space and
+brings the space forward if it isn't showing. `spaceherd open .` points the
+space's VS Code at that folder. When spaceherd isn't running, it runs `code`
+instead.
+
+To have `code` itself do this inside herdr, choose *Spaceherd → Install
+‘code’ Command in herdr Panes…* (*File* on Linux). herdr starts the panes'
+shells, not spaceherd, so this adds a marked `code` function to `~/.zshrc`
+and `~/.bashrc` on this machine and your SSH machines; outside herdr, `code`
+works as before. *Uninstall ‘code’ Command* removes the block. Shells that
+are already open need `source ~/.zshrc` (or a restart). Options such as
+`code --diff` go to `code` unchanged. The request travels
+through herdr (as a short-lived token on the pane), so it works on SSH
+machines too.
+
 ### Laptop and desktop
 
 herdr's spaces live in the herdr server of the machine they run on. Work from
