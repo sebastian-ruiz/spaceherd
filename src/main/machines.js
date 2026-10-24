@@ -134,7 +134,9 @@ class Machine extends EventEmitter {
 class LocalMachine extends Machine {
   start() {
     this.home = os.homedir();
-    const socket = this.def.herdrSocket || path.join(os.homedir(), '.config', 'herdr', 'herdr.sock');
+    // Where herdr puts it: under $XDG_CONFIG_HOME when that's set.
+    const configHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
+    const socket = this.def.herdrSocket || path.join(configHome, 'herdr', 'herdr.sock');
     this.connectHerdr(socket);
     this.vscodeReady = this.startServeWeb();
   }
