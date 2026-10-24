@@ -224,7 +224,43 @@ window.addEventListener(
 // sends it as a plain Enter, which submits; send ESC Enter (Meta+Enter),
 // which they read as a new line, as VS Code's terminal does after Claude
 // Code's /terminal-setup.
+// Mac keys that act on the terminal, as in VS Code's terminal: line editing
+// goes to the program as Ctrl keys, Option+arrows jump words (Esc b / Esc f,
+// which every shell knows), Cmd+K clears the screen (Ctrl+L), Cmd+F opens
+// herdr's search, and Cmd+=/-/0 change the font size. Cmd+A has nothing to
+// select in herdr's screen, so it does nothing rather than moving focus to
+// VS Code. src/main/shortcuts.js keeps these Cmd keys here.
+const IS_MAC = navigator.platform.startsWith('Mac');
+let findKeys = null;
+function macTerminalKey(e) {
+  if (!IS_MAC || e.ctrlKey || e.shiftKey && e.code !== 'Equal') return undefined;
+  if (e.altKey && !e.metaKey) {
+    if (e.code === 'ArrowLeft') return () => cm.write('\x1bb');
+    if (e.code === 'ArrowRight') return () => cm.write('\x1bf');
+    return undefined;
+  }
+  if (!e.metaKey || e.altKey) return undefined;
+  switch (e.code) {
+    case 'ArrowLeft': return () => cm.write('\x01');
+    case 'ArrowRight': return () => cm.write('\x05');
+    case 'Backspace': return () => cm.write('\x15');
+    case 'KeyK': return () => cm.write('\x0c');
+    case 'KeyF': return () => findKeys && cm.write(findKeys);
+    case 'KeyA': return () => {};
+    case 'Equal': return () => zoom(1);
+    case 'Minus': return () => zoom(-1);
+    case 'Digit0': return () => zoom(0);
+    default: return undefined;
+  }
+}
+
 term.attachCustomKeyEventHandler((e) => {
+  const action = macTerminalKey(e);
+  if (action) {
+    if (e.type === 'keydown') action();
+    e.preventDefault();
+    return false;
+  }
   if (e.key !== 'Enter' || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return true;
   if (e.type === 'keydown') cm.write('\x1b\r');
   return false;
@@ -309,10 +345,27 @@ for (const code of [9, 777]) {
 
 cm.onData((d) => term.write(d));
 cm.onFocus(() => term.focus());
+// Font size: the config's, plus Cmd+=/- steps, which are remembered here.
+let baseFontSize = 13;
+let fontSteps = 0;
+try {
+  fontSteps = Number(localStorage.getItem('fontSteps')) || 0;
+} catch {}
+function zoom(step) {
+  fontSteps = step === 0 ? 0 : Math.max(6 - baseFontSize, Math.min(fontSteps + step, 40 - baseFontSize));
+  try {
+    localStorage.setItem('fontSteps', String(fontSteps));
+  } catch {}
+  term.options.fontSize = baseFontSize + fontSteps;
+  resize();
+}
+
 cm.onConfig((cfg) => {
   term.options.fontFamily = cfg.fontFamily;
-  term.options.fontSize = cfg.fontSize;
+  baseFontSize = cfg.fontSize;
+  term.options.fontSize = baseFontSize + fontSteps;
   term.options.macOptionIsMeta = cfg.macOptionIsMeta;
+  findKeys = cfg.findKeys;
   resize();
 });
 

@@ -21,8 +21,15 @@ const LINUX = new Set([
 ]);
 
 // macOS: the shell never sees Cmd, so as in VS Code's terminal every Cmd key
-// reaches VS Code, except spaceherd's menu keys and the system ones.
-const MAC_KEEP = new Set(['cmd+c', 'cmd+v', 'cmd+x', 'cmd+q', 'cmd+w', 'cmd+h', 'alt+cmd+h', 'cmd+m', 'cmd+tab', 'cmd+`']);
+// reaches VS Code, except spaceherd's menu keys, the system ones, and the
+// terminal's own keys (handled in src/renderer/terminal.js): line editing,
+// clear, find, select all and font size.
+const MAC_KEEP = new Set([
+  'cmd+c', 'cmd+v', 'cmd+x', 'cmd+q', 'cmd+w', 'cmd+h', 'alt+cmd+h', 'cmd+m', 'cmd+tab', 'cmd+`',
+  'cmd+arrowleft', 'cmd+arrowright', 'cmd+backspace',
+  'cmd+k', 'cmd+f', 'cmd+a',
+  'cmd+=', 'shift+cmd+=', 'cmd+-', 'cmd+0',
+]);
 
 const PUNCTUATION = {
   Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']',

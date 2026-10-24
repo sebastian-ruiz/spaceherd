@@ -75,6 +75,12 @@ running `herdr` in any terminal. Closing the app detaches; agents keep running.
 | Ctrl+Cmd+E | VS Code for this space, on or off |
 | Cmd+click in herdr | Open the URL (browser) or file path (this space's VS Code) under the pointer |
 | Drag a file from VS Code into herdr | Paste its path into the focused pane |
+| Cmd+← / Cmd+→ in herdr | Start / end of the line (sends Ctrl+A / Ctrl+E) |
+| Option+← / Option+→ in herdr | One word back / forward (sends Esc b / Esc f) |
+| Cmd+Backspace in herdr | Delete to the start of the line (sends Ctrl+U) |
+| Cmd+K in herdr | Clear the screen (sends Ctrl+L) |
+| Cmd+F in herdr | Search the focused pane's output (herdr's copy mode, `prefix+[` then `?`) |
+| Cmd+= / Cmd+- / Cmd+0 | Terminal font size: bigger / smaller / back to the configured size |
 
 Cmd+W, Cmd+Z and other editor keys go to VS Code; the app menu only takes
 cut, copy and paste.
@@ -137,7 +143,7 @@ open editors and layout are kept per client, so those don't follow you.
 - **Shortcuts:** VS Code's shortcuts work while herdr has focus, as from
   VS Code's own terminal: the keys VS Code's terminal hands to VS Code move
   focus to VS Code and act there. On macOS that is every `Cmd` key except
-  `Cmd+C/V/X/Q/W/H/M`; on Linux a fixed list (`Ctrl+P`, `Ctrl+E`,
+  `Cmd+C/V/X/Q/W/H/M` and the terminal keys in the table above; on Linux a fixed list (`Ctrl+P`, `Ctrl+E`,
   `Ctrl+Shift+P`, `F1`, `Ctrl+J`, `Ctrl+Tab`, `Ctrl+PageUp/Down`, `Ctrl+1..8`,
   `Ctrl+Shift+B`, debug keys). Everything else, including `Ctrl+C`, `Ctrl+B`
   and `Ctrl+K`, goes to herdr. See `src/main/shortcuts.js`.

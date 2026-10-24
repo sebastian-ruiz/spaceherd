@@ -10,6 +10,7 @@ const { HerdrPty } = require('./pty');
 const { forwardsToVSCode, asInputEvent, chord } = require('./shortcuts');
 const { applyUserSettings } = require('./vscode-settings');
 const { dropText } = require('./drop');
+const { findSequence } = require('./herdr-keys');
 const { parseLink } = require('./links');
 const { workbenchReady, quickOpen } = require('./quick-open');
 const { Updater } = require('./updater');
@@ -301,7 +302,7 @@ async function syncHerdrMachines() {
 }
 
 ipcMain.on('terminal:ready', () => {
-  terminalView.webContents.send('terminal:config', config.terminal);
+  terminalView.webContents.send('terminal:config', { ...config.terminal, findKeys: findSequence() });
   if (!herdrPty) startHerdr();
 });
 ipcMain.on('pty:write', (_e, data) => {
