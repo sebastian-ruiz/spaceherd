@@ -57,10 +57,10 @@ final class Caption {
     let box = NSView()
     box.wantsLayer = true
     box.layer!.backgroundColor = NSColor(white: 0.97, alpha: 0.92).cgColor
-    box.layer!.cornerRadius = 14
+    box.layer!.cornerRadius = 20
     box.layer!.borderWidth = 1
     box.layer!.borderColor = NSColor(white: 0, alpha: 0.08).cgColor
-    label.font = .systemFont(ofSize: 26, weight: .semibold)
+    label.font = .systemFont(ofSize: 38, weight: .semibold)
     label.textColor = NSColor(white: 0.12, alpha: 1)
     box.addSubview(label)
     panel.contentView = box
@@ -73,11 +73,11 @@ final class Caption {
       let id = shown
       label.stringValue = text
       label.sizeToFit()
-      let size = CGSize(width: label.frame.width + 44, height: label.frame.height + 22)
-      label.setFrameOrigin(CGPoint(x: 22, y: 11))
+      let size = CGSize(width: label.frame.width + 64, height: label.frame.height + 30)
+      label.setFrameOrigin(CGPoint(x: 32, y: 15))
       // Bottom centre of the window, converted to AppKit's bottom-left origin.
       let screenHeight = NSScreen.screens[0].frame.height
-      let bottom = frame.maxY - 60
+      let bottom = frame.maxY - 70
       panel.setFrame(CGRect(x: frame.midX - size.width / 2, y: screenHeight - bottom,
                             width: size.width, height: size.height), display: true)
       panel.orderFrontRegardless()
@@ -165,7 +165,7 @@ Thread {
       glide(to: point(i + 1)); click(); i += 3
     case "cmdclick":
       // Cmd goes down first, so the link cursor shows while hovering.
-      caption.show("⌘ Click", for: 1.6)
+      caption.show("⌘ Click", for: 2.6)
       setFlags(.maskCommand); usleep(150_000)
       glide(to: point(i + 1)); usleep(400_000)
       click(); usleep(100_000)
@@ -175,7 +175,7 @@ Thread {
       glide(to: point(i + 3), dragging: true, ms: 900); usleep(300_000)
       post(.leftMouseUp, pos); i += 5
     case "toggle":
-      caption.show("⌃ ⌘ E", for: 1.4)
+      caption.show("⌃ ⌘ E", for: 2.4)
       key(14, [.maskControl, .maskCommand]); i += 1
     case "wait":
       usleep(UInt32(Double(args[i + 1])! * 1_000_000)); i += 2

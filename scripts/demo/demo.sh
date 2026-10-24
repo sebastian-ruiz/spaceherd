@@ -72,7 +72,8 @@ TOML
     "workbench.startupEditor": "none",
     "workbench.tips.enabled": false,
     "security.workspace.trust.enabled": false,
-    "git.openRepositoryInParentFolders": "never"
+    "git.openRepositoryInParentFolders": "never",
+    "typescript.validate.enable": false
   }
 }
 JSON
