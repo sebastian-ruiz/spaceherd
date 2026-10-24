@@ -15,6 +15,9 @@ const { workbenchReady, quickOpen } = require('./quick-open');
 const { Updater } = require('./updater');
 
 app.setName('Spaceherd');
+// Run from source, the bundle is Electron's, and the About panel would show
+// Electron's version.
+app.setAboutPanelOptions({ applicationVersion: app.getVersion(), version: '' });
 // Electron data (VS Code's per-machine state, cookies) goes in a fixed
 // "spaceherd" folder rather than one named after the app's display name.
 // SPACEHERD_DIR isolates everything, including this.
