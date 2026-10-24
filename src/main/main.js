@@ -18,6 +18,10 @@ app.setName('Spaceherd');
 // Run from source, the bundle is Electron's, and the About panel would show
 // Electron's version.
 app.setAboutPanelOptions({ applicationVersion: app.getVersion(), version: '' });
+
+// The packaged macOS app has the icon in its bundle. Run from source the
+// Dock would show Electron's, and Linux takes the window's icon.
+const ICON = path.join(__dirname, '..', '..', 'build', 'icon.png');
 // Electron data (VS Code's per-machine state, cookies) goes in a fixed
 // "spaceherd" folder rather than one named after the app's display name.
 // SPACEHERD_DIR isolates everything, including this.
@@ -179,6 +183,7 @@ function createWindow() {
     title: 'spaceherd',
     // The first click after switching apps acts too, e.g. on herdr's sidebar.
     acceptFirstMouse: true,
+    icon: process.platform === 'linux' ? ICON : undefined,
   });
 
   terminalView = new WebContentsView({
@@ -356,6 +361,7 @@ ipcMain.on('layout:drag', (_e, screenX) => {
 app.whenReady().then(() => {
   // Dark until herdr has drawn: the terminal's own background is dark.
   nativeTheme.themeSource = 'dark';
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(ICON);
   config = loadConfig();
   state.load();
   shellEnv.cached = shellEnv();

@@ -8,7 +8,8 @@
   "scripts": {
     "start": "electron .",
     "postinstall": "node scripts/postinstall.js",
-    "dist": "electron-builder --publish never"
+    "dist": "electron-builder --publish never",
+    "icon": "electron scripts/render-icon.js"
   },
   "devDependencies": {
     "electron": "44.9.3",
@@ -36,6 +37,7 @@
     "productName": "Spaceherd",
     "files": [
       "src/**/*",
+      "build/icon.png",
       "package.json",
       "LICENSE"
     ],

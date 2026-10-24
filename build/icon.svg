@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- macOS icon shape: 824 square, corner radius as in Apple's icon template -->
+    <rect id="squircle" x="100" y="100" width="824" height="824" rx="185"/>
+    <clipPath id="tile"><use href="#squircle"/></clipPath>
+
+    <linearGradient id="sky" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#5a4fdc"/>
+      <stop offset="0.45" stop-color="#2a2690"/>
+      <stop offset="1" stop-color="#0b0d3a"/>
+    </linearGradient>
+    <!-- soft light from above -->
+    <radialGradient id="light" cx="0.5" cy="0.05" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- glass rim: bright at the top, fading towards the bottom -->
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.7"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.28"/>
+    </linearGradient>
+    <radialGradient id="wool" cx="0.38" cy="0.28" r="0.85">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.7" stop-color="#f3f0ff"/>
+      <stop offset="1" stop-color="#cfc8ea"/>
+    </radialGradient>
+    <radialGradient id="star" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#c7d2fe" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+
+    <!-- One sheep, centred on 0,0: a big fleece, a big head, short thick legs. -->
+    <g id="sheep">
+      <g fill="#7d72c7">
+        <rect x="-78" y="48" width="38" height="96" rx="19" transform="rotate(20 -59 48)"/>
+        <rect x="-24" y="62" width="38" height="96" rx="19" transform="rotate(6 -5 62)"/>
+        <rect x="30" y="62" width="38" height="96" rx="19" transform="rotate(-8 49 62)"/>
+        <rect x="76" y="46" width="38" height="96" rx="19" transform="rotate(-22 95 46)"/>
+      </g>
+      <g fill="url(#wool)">
+        <ellipse cx="0" cy="0" rx="130" ry="96"/>
+        <circle cx="-86" cy="-46" r="64"/>
+        <circle cx="0" cy="-80" r="70"/>
+        <circle cx="86" cy="-46" r="64"/>
+        <circle cx="118" cy="26" r="58"/>
+        <circle cx="54" cy="78" r="62"/>
+        <circle cx="-44" cy="80" r="62"/>
+        <circle cx="-112" cy="30" r="56"/>
+      </g>
+      <g transform="translate(-150 -4) rotate(-16)">
+        <ellipse cx="-44" cy="-36" rx="36" ry="17" fill="#2f2850" transform="rotate(-28 -44 -36)"/>
+        <ellipse cx="44" cy="-36" rx="36" ry="17" fill="#2f2850" transform="rotate(28 44 -36)"/>
+        <ellipse cx="0" cy="10" rx="58" ry="72" fill="#3d3566"/>
+        <circle cx="-4" cy="-50" r="32" fill="url(#wool)"/>
+        <circle cx="-22" cy="8" r="12" fill="#ffffff"/>
+        <circle cx="22" cy="8" r="12" fill="#ffffff"/>
+        <circle cx="-19" cy="11" r="6.5" fill="#15122b"/>
+        <circle cx="25" cy="11" r="6.5" fill="#15122b"/>
+      </g>
+    </g>
+    <!-- its soft shadow on the "glass" below -->
+    <ellipse id="sheep-shadow" cx="10" cy="215" rx="150" ry="36" fill="#05061f" opacity="0.45" filter="url(#shadow)"/>
+  </defs>
+
+  <g clip-path="url(#tile)">
+    <rect width="1024" height="1024" fill="url(#sky)"/>
+    <rect width="1024" height="1024" fill="url(#light)"/>
+
+    <!-- a few stars: two soft glows and some pinpoints -->
+    <g fill="#ffffff" opacity="0.8">
+      <circle cx="210" cy="560" r="4.5"/>
+      <circle cx="430" cy="200" r="4"/>
+      <circle cx="830" cy="470" r="4.5"/>
+      <circle cx="300" cy="840" r="4"/>
+      <circle cx="760" cy="830" r="4"/>
+    </g>
+    <circle cx="780" cy="250" r="40" fill="url(#star)"/>
+    <circle cx="240" cy="290" r="24" fill="url(#star)"/>
+
+    <!-- one sheep, floating -->
+    <g transform="translate(535 470) rotate(-14) scale(1.3)"><use href="#sheep-shadow"/><use href="#sheep"/></g>
+  </g>
+
+  <!-- glass rim -->
+  <use href="#squircle" fill="none" stroke="url(#rim)" stroke-width="5"/>
+</svg>

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="build/icon.png" width="160" alt="Spaceherd icon: a sheep floating in space">
+</p>
+
 # spaceherd
 
 herdr, with VS Code beside it for the spaces you want it in. Switching a space
@@ -228,6 +232,9 @@ publishes a GitHub Release with the files, including a `.sig` signature for
 each update file. Run it by hand from the Actions
 tab to only build; the files are kept as workflow artifacts. `npm run dist`
 builds for the current system into `dist/`.
+
+The app icon is `build/icon.svg`. After changing it, `npm run icon` renders
+`build/icon.png`, which the builds use.
 
 ## Debugging
 
