@@ -12,6 +12,7 @@ const { applyUserSettings } = require('./vscode-settings');
 const { dropText } = require('./drop');
 const { parseLink } = require('./links');
 const { workbenchReady, quickOpen } = require('./quick-open');
+const { Updater } = require('./updater');
 
 app.setName('Spaceherd');
 // Electron data (VS Code's per-machine state, cookies) goes in a fixed
@@ -38,7 +39,7 @@ function shellEnv() {
   return env;
 }
 
-let win, terminalView, views, spaces, attention, herdrPty, machines;
+let win, terminalView, views, spaces, attention, herdrPty, machines, updater;
 let config;
 
 // Whether the focused space has VS Code open. Without it herdr gets the
@@ -110,8 +111,25 @@ function startHerdr() {
 }
 
 function buildMenu() {
+  const updateItem = updater.menuItem();
   const template = [
-    { role: 'appMenu' },
+    process.platform === 'darwin'
+      ? {
+          label: app.name,
+          submenu: [
+            { role: 'about' },
+            updateItem,
+            { type: 'separator' },
+            { role: 'services' },
+            { type: 'separator' },
+            { role: 'hide' },
+            { role: 'hideOthers' },
+            { role: 'unhide' },
+            { type: 'separator' },
+            { role: 'quit' },
+          ],
+        }
+      : { label: 'File', submenu: [{ role: 'quit' }] },
     {
       // Only clipboard roles: undo/redo/select-all accelerators would steal
       // those keys from VS Code's own keybindings.
@@ -142,8 +160,12 @@ function buildMenu() {
       ],
     },
     { role: 'windowMenu' },
+    ...(process.platform === 'darwin' ? [] : [{ label: 'Help', submenu: [updateItem] }]),
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  // Rebuilding drops the checkbox state.
+  const toggle = Menu.getApplicationMenu().getMenuItemById('vscode-toggle');
+  if (toggle) toggle.checked = vscodeVisible;
 }
 
 function createWindow() {
@@ -334,8 +356,11 @@ app.whenReady().then(() => {
   config = loadConfig();
   state.load();
   shellEnv.cached = shellEnv();
+  updater = new Updater({ mode: config.updates });
+  updater.on('change', buildMenu);
   buildMenu();
   createWindow();
+  updater.start();
 });
 
 app.on('before-quit', () => {

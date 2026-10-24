@@ -10,15 +10,31 @@ Download the latest build for your system from
 [Releases](https://github.com/sebastian-ruiz/spaceherd/releases):
 
 - **macOS:** `Spaceherd-<version>-mac-arm64.dmg` (Apple silicon) or
-  `-mac-x64.dmg` (Intel). Drag Spaceherd into Applications. The app isn't
-  signed with an Apple Developer ID yet, so macOS blocks it on first launch;
-  allow it once with
-  `xattr -dr com.apple.quarantine /Applications/Spaceherd.app`
-  (or *System Settings → Privacy & Security → Open Anyway*).
+  `-mac-x64.dmg` (Intel). Drag Spaceherd into Applications and open it from
+  there. The app isn't signed with an Apple Developer ID, so macOS blocks the
+  first launch: open *System Settings → Privacy & Security* and click *Open
+  Anyway* (or run
+  `xattr -dr com.apple.quarantine /Applications/Spaceherd.app`). That's only
+  needed once; updates install without it.
 - **Linux:** the `.deb` (`sudo apt install ./Spaceherd-<version>-linux-<arch>.deb`)
   or the `.AppImage` (`chmod +x` it and run it). AppImages need FUSE 2
   (`libfuse2` on Ubuntu). On Ubuntu 24.04 and later, AppArmor may stop
   Electron's sandbox in an AppImage; the `.deb` doesn't have that problem.
+
+## Updates
+
+The packaged app checks GitHub Releases shortly after starting and every six
+hours, downloads a new version in the background and installs it when you
+quit, or right away with *Spaceherd → Restart to Update*. Your herdr spaces,
+agents and VS Code servers keep running across the restart. *Check for
+Updates…* checks now. On Linux the menu item is under *Help*.
+
+- **macOS** and the Linux **AppImage** update themselves. Updates are signed
+  with spaceherd's own key and checked against it before installing, so no
+  Apple Developer ID is needed. The app has to be somewhere it can replace
+  itself: in Applications, not run from the `.dmg` or from Downloads.
+- The **`.deb`** shows a notification when a new version is out.
+- Set `"updates": "off"` in the config to never check.
 
 ## Run from source
 
@@ -184,6 +200,12 @@ cut, copy and paste.
 
 ## Releasing
 
+Releases need the update signing key as the `UPDATE_SIGNING_KEY` Actions
+secret (*Settings → Secrets and variables → Actions*): the Ed25519 private key
+whose public half is in `src/main/update-signature.js`. Keep a backup of it:
+installed apps only accept updates signed with that key. A new key means
+everyone reinstalls once by hand.
+
 Set the version in `package.json` (`npm version 0.2.0 --no-git-tag-version`),
 commit, then tag and push:
 
@@ -192,7 +214,8 @@ git tag v0.2.0 && git push && git push origin v0.2.0
 ```
 
 The *Release* workflow builds macOS (arm64, x64) and Linux (x64, arm64) and
-publishes a GitHub Release with the files. Run it by hand from the Actions
+publishes a GitHub Release with the files, including a `.sig` signature for
+each update file. Run it by hand from the Actions
 tab to only build; the files are kept as workflow artifacts. `npm run dist`
 builds for the current system into `dist/`.
 

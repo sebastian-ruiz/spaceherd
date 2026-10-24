@@ -60,6 +60,22 @@ jobs:
 
       - run: npm run dist -- ${{ matrix.args }}
 
+      # The in-app updater only installs files signed with this key (see
+      # src/main/update-signature.js). Required for releases; builds started
+      # by hand without the secret skip it.
+      - name: Sign update files
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -n "$UPDATE_SIGNING_KEY" ]; then
+            node scripts/sign-update.js dist
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "The UPDATE_SIGNING_KEY secret is required for releases" >&2
+            exit 1
+          else
+            echo "UPDATE_SIGNING_KEY not set; update files are not signed"
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: spaceherd-${{ matrix.name }}
@@ -70,6 +86,7 @@ jobs:
             dist/*.AppImage
             dist/*.deb
             dist/*.blockmap
+            dist/*.sig
             dist/latest*.yml
 
   release:
