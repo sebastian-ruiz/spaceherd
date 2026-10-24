@@ -2,6 +2,12 @@
   <img src="build/icon.png" width="160" alt="Spaceherd icon: a sheep floating in space">
 </p>
 
+
+
+https://github.com/user-attachments/assets/2b10bc63-c04f-4bf7-9a0c-1e21ef559c9d
+
+
+
 # spaceherd
 
 herdr, with VS Code beside it for the spaces you want it in. Switching a space
