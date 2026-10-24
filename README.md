@@ -236,6 +236,16 @@ builds for the current system into `dist/`.
 The app icon is `build/icon.svg`. After changing it, `npm run icon` renders
 `build/icon.png`, which the builds use.
 
+## Demo video
+
+`scripts/demo/demo.sh start` opens spaceherd with made-up projects and
+scripted agents, using its own herdr, VS Code server data and config in
+`~/spaceherd-demo`, so nothing from your own setup shows. `demo.sh reset`
+stops it and deletes that folder. On macOS, `scripts/demo/record.sh` does
+the rest: it clicks through the demo, records the window and writes an MP4
+(see the script for what it needs). Videos aren't kept in the repo: drag the
+MP4 into README.md while editing it on github.com, and GitHub hosts it.
+
 ## Debugging
 
 ```sh
