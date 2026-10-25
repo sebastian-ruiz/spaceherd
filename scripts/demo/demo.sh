@@ -64,7 +64,8 @@ TOML
 {
   "machines": [
     { "id": "local", "type": "local", "hostnames": ["$(hostname)"],
-      "vscodePort": $PORT, "codeCommand": "$DEMO_DIR/bin/code" }
+      "vscodePort": $PORT, "codeCommand": "$DEMO_DIR/bin/code",
+      "vscodeServerDataDir": "$DEMO_DIR/vscode-server" }
   ],
   "updates": "off",
   "vscodeUserSettings": {

@@ -12,6 +12,7 @@ const { spawn, execFile } = require('child_process');
 const { EventEmitter } = require('events');
 const { HerdrClient } = require('./herdr-client');
 const { debug } = require('./config');
+const { installVSCodeExtension } = require('./vscode-extension');
 
 const POLL_MS = 1500;
 
@@ -210,6 +211,7 @@ class LocalMachine extends Machine {
     const socket = this.def.herdrSocket || path.join(configHome, 'herdr', 'herdr.sock');
     this.connectHerdr(socket);
     installLocalCli();
+    installVSCodeExtension(this.def.vscodeServerDataDir);
     this.vscodeReady = this.startServeWeb();
   }
 

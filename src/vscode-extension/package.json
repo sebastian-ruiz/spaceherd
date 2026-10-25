@@ -1,0 +1,36 @@
+{
+  "name": "spaceherd",
+  "displayName": "spaceherd",
+  "description": "Adds what VS Code in a browser lacks when it runs inside spaceherd. Installed and updated by spaceherd.",
+  "publisher": "spaceherd",
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": { "vscode": "^1.80.0" },
+  "extensionKind": ["workspace"],
+  "main": "./extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      { "command": "spaceherd.revealInFinder", "title": "Reveal in Finder" },
+      { "command": "spaceherd.revealInFileExplorer", "title": "Reveal in File Explorer" },
+      { "command": "spaceherd.openContainingFolder", "title": "Open Containing Folder" }
+    ],
+    "menus": {
+      "explorer/context": [
+        { "command": "spaceherd.revealInFinder", "when": "isMac", "group": "navigation@20" },
+        { "command": "spaceherd.revealInFileExplorer", "when": "isWindows", "group": "navigation@20" },
+        { "command": "spaceherd.openContainingFolder", "when": "isLinux", "group": "navigation@20" }
+      ],
+      "editor/title/context": [
+        { "command": "spaceherd.revealInFinder", "when": "isMac && resourceScheme != untitled", "group": "2_files@20" },
+        { "command": "spaceherd.revealInFileExplorer", "when": "isWindows && resourceScheme != untitled", "group": "2_files@20" },
+        { "command": "spaceherd.openContainingFolder", "when": "isLinux && resourceScheme != untitled", "group": "2_files@20" }
+      ],
+      "commandPalette": [
+        { "command": "spaceherd.revealInFinder", "when": "isMac" },
+        { "command": "spaceherd.revealInFileExplorer", "when": "isWindows" },
+        { "command": "spaceherd.openContainingFolder", "when": "isLinux" }
+      ]
+    }
+  }
+}

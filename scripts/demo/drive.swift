@@ -5,7 +5,7 @@
 //
 //   swiftc -O drive.swift -o drive
 //   drive <pid> bounds                      # print the window's x,y,w,h
-//   drive <pid> move X Y | click X Y | cmdclick X Y | drag X1 Y1 X2 Y2
+//   drive <pid> move X Y | click X Y | rightclick X Y | cmdclick X Y | drag X1 Y1 X2 Y2
 //               | toggle | wait SECONDS ...
 //
 // Needs the Accessibility permission for the terminal it runs from.
@@ -102,8 +102,8 @@ let src = CGEventSource(stateID: .hidSystemState)
 var pos = CGEvent(source: nil)!.location
 var flags: CGEventFlags = []
 
-func post(_ type: CGEventType, _ p: CGPoint) {
-  let e = CGEvent(mouseEventSource: src, mouseType: type, mouseCursorPosition: p, mouseButton: .left)!
+func post(_ type: CGEventType, _ p: CGPoint, button: CGMouseButton = .left) {
+  let e = CGEvent(mouseEventSource: src, mouseType: type, mouseCursorPosition: p, mouseButton: button)!
   e.flags = flags
   e.post(tap: .cghidEventTap)
 }
@@ -146,6 +146,12 @@ func click() {
   post(.leftMouseUp, pos)
 }
 
+func rightClick() {
+  post(.rightMouseDown, pos, button: .right)
+  usleep(60_000)
+  post(.rightMouseUp, pos, button: .right)
+}
+
 func point(_ i: Int) -> CGPoint {
   CGPoint(x: frame.minX + Double(args[i])!, y: frame.minY + Double(args[i + 1])!)
 }
@@ -163,6 +169,8 @@ Thread {
       glide(to: point(i + 1)); i += 3
     case "click":
       glide(to: point(i + 1)); click(); i += 3
+    case "rightclick":
+      glide(to: point(i + 1)); rightClick(); i += 3
     case "cmdclick":
       // Cmd goes down first, so the link cursor shows while hovering.
       caption.show("⌘ Click", for: 2.6)

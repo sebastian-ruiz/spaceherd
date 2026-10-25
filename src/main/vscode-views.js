@@ -19,10 +19,11 @@ function messagePage(text) {
 }
 
 class VSCodeViews {
-  constructor(win, { maxLive = 4, idleMinutes = 30, onViewCreated = () => {} } = {}) {
+  constructor(win, { maxLive = 4, idleMinutes = 30, onViewCreated = () => {}, onSpaceherdLink = () => {} } = {}) {
     this.win = win;
     this.maxLive = maxLive;
     this.onViewCreated = onViewCreated;
+    this.onSpaceherdLink = onSpaceherdLink;
     this.views = new Map(); // key -> { view, url, lastUsed, closing }
     this.activeKey = null;
     this.bounds = { x: 0, y: 0, width: 0, height: 0 };
@@ -38,7 +39,9 @@ class VSCodeViews {
     }
   }
 
-  createView(partition) {
+  // `key` is the space, for spaceherd:// links from its VS Code
+  // (src/vscode-extension).
+  createView(partition, key) {
     const view = new WebContentsView({
       webPreferences: {
         partition: partition || undefined,
@@ -52,7 +55,15 @@ class VSCodeViews {
     view.setVisible(false);
     view.webContents.setWindowOpenHandler(({ url }) => {
       if (/^https?:/.test(url)) shell.openExternal(url);
+      else if (key && url.startsWith('spaceherd:')) this.onSpaceherdLink(key, url);
       return { action: 'deny' };
+    });
+    // VS Code opens links of other schemes by navigating to them, as a
+    // browser hands them to the app registered for the scheme.
+    view.webContents.on('will-navigate', (event) => {
+      if (!event.url.startsWith('spaceherd:')) return;
+      event.preventDefault();
+      if (key) this.onSpaceherdLink(key, event.url);
     });
     this.win.contentView.addChildView(view);
     view.setBounds(this.bounds);
@@ -72,7 +83,7 @@ class VSCodeViews {
     }
     const cold = !entry;
     if (!entry) {
-      entry = { view: this.createView(partition), url };
+      entry = { view: this.createView(partition, key), url };
       this.onViewCreated(entry.view.webContents);
       entry.view.webContents.loadURL(url);
       this.views.set(key, entry);

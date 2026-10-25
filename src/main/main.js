@@ -1,6 +1,6 @@
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { app, BrowserWindow, WebContentsView, Menu, ipcMain, nativeTheme, clipboard, webContents } = require('electron');
+const { app, BrowserWindow, WebContentsView, Menu, ipcMain, nativeTheme, clipboard, webContents, shell, dialog } = require('electron');
 const { loadConfig, state, CONFIG_PATH, debug } = require('./config');
 const { createMachine, herdrSavedMachines } = require('./machines');
 const { VSCodeViews } = require('./vscode-views');
@@ -253,6 +253,7 @@ function createWindow() {
     maxLive: config.maxLiveViews,
     idleMinutes: config.idleViewMinutes,
     onViewCreated: setUpVSCodeView,
+    onSpaceherdLink,
   });
   layout();
   win.on('resize', layout);
@@ -421,6 +422,26 @@ async function openFromPane(machine, pane, { kind, path: target }) {
   if (kind === 'd') return spaces.pinFolder(key, target);
   const link = parseLink(target, { cwd: pane.foreground_cwd || pane.cwd, home: machine.home });
   if (link?.file) await openInVSCode(key, link);
+}
+
+// spaceherd:// links from spaceherd's VS Code extension (src/vscode-extension).
+// reveal?path=… is Reveal in Finder, File Explorer or Open Containing Folder.
+function onSpaceherdLink(key, link) {
+  let url;
+  try {
+    url = new URL(link);
+  } catch {
+    return;
+  }
+  const file = url.searchParams.get('path');
+  if (url.host !== 'reveal' || !file || !path.isAbsolute(file)) return;
+  const machine = machines.find((m) => key.startsWith(`${m.id}:`));
+  debug('reveal', key, file);
+  if (machine && machine.def.type !== 'ssh') return shell.showItemInFolder(file);
+  dialog.showMessageBox(win, {
+    message: 'That file is on another computer',
+    detail: `${file} is on ${machine?.id ?? 'another machine'}. This computer's file manager can only show its own files.`,
+  });
 }
 
 let saveWidthTimer;

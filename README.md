@@ -164,6 +164,14 @@ open editors and layout are kept per client, so those don't follow you.
   paths resolve from the focused pane's directory. herdr takes plain clicks;
   links are found in the visible text, so a hyperlink whose label isn't its
   target isn't opened.
+- **Reveal in Finder:** VS Code in a browser can't reach the desktop, so it
+  has no *Reveal in Finder* (*Reveal in File Explorer* on Windows, *Open
+  Containing Folder* on Linux). spaceherd adds it back, in the Explorer's and
+  the editor tabs' right-click menus, with a small extension it installs into
+  the local VS Code server (`src/vscode-extension`; it shows up as
+  *spaceherd* in the Extensions view). The extension asks spaceherd, which
+  shows the file in the desktop's file manager. SSH machines don't get it:
+  their files aren't on this computer.
 - **Title bar:** dark or light to match herdr's theme, judged from the
   backgrounds herdr draws, not from the system appearance.
 - **Shortcuts:** VS Code's shortcuts work while herdr has focus, as from
@@ -204,7 +212,10 @@ still reach you. The options, with their defaults:
   other entries replace them.
 - `machines` lists machines beyond those saved in herdr (which are added
   automatically; see below), or overrides the local one. A list given here
-  replaces the default, so keep the local machine in it.
+  replaces the default, so keep the local machine in it. A local machine can
+  also have `codeCommand` (the `code` that runs `serve-web`) and
+  `vscodeServerDataDir`, where that server keeps its extensions, if you
+  start it with `--server-data-dir` (default `~/.vscode-server`).
 - `folderOverrides`: `"machineId:workspaceLabel": "/path"` fixes a space's
   VS Code folder, e.g. `{ "desktop:my-space": "/home/me/src/my-project" }`.
 
