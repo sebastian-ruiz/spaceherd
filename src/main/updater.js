@@ -6,6 +6,10 @@
 // are checked against our own Ed25519 signature (src/main/update-signature.js)
 // instead of Apple's.
 //
+// By default ("updates": "notify") the app only checks: a new version shows
+// as an item in the app menu, and choosing it downloads and installs it.
+// "auto" downloads by itself and installs on quit.
+//
 // macOS: the .zip is unpacked and swapped in for Spaceherd.app. Linux: an
 // AppImage replaces itself; other installs (.deb) are told about new versions.
 
@@ -89,10 +93,10 @@ function installTarget() {
 }
 
 class Updater extends EventEmitter {
-  constructor({ mode = 'auto' } = {}) {
+  constructor({ mode = 'notify' } = {}) {
     super();
     this.mode = mode;
-    this.state = { status: 'idle' }; // idle | checking | downloading | ready
+    this.state = { status: 'idle' }; // idle | checking | available | downloading | ready
     this.told = new Set(); // notifications already shown, per version or reason
   }
 
@@ -112,7 +116,8 @@ class Updater extends EventEmitter {
     this.emit('change', state);
   }
 
-  // `manual`: from the menu, so say when there's nothing to do or it failed.
+  // `manual`: from the menu, so say when there's nothing to do or it failed,
+  // and install what's found even when updates aren't automatic.
   async check({ manual = false } = {}) {
     if (!app.isPackaged) {
       if (manual) dialog.showMessageBox({ message: 'Updates are only checked in the packaged app.', detail: 'Running from source: update with git.' });
@@ -124,7 +129,9 @@ class Updater extends EventEmitter {
       return;
     }
     const current = app.getVersion();
-    this.setState({ status: 'checking' });
+    // Quiet checks keep the menu as it is, an available update included.
+    const before = this.state;
+    if (manual) this.setState({ status: 'checking' });
     try {
       const feed = parseFeed(await (await fetchOk(`${FEED_BASE}/${feedName()}`)).text());
       debug('update feed', feed.version, 'current', current);
@@ -133,6 +140,7 @@ class Updater extends EventEmitter {
         if (manual) dialog.showMessageBox({ message: `Spaceherd ${current} is the latest version.` });
         return;
       }
+      if (!manual && this.mode !== 'auto') return this.setState({ status: 'available', version: feed.version });
       const kind = installKind();
       const target = installTarget();
       if (kind === 'notify' || !target.writable) {
@@ -146,11 +154,11 @@ class Updater extends EventEmitter {
       this.setState({ status: 'downloading', version: feed.version });
       const prepared = await this.download(feed.version, file, kind);
       this.setState({ status: 'ready', version: feed.version, ...prepared });
-      this.notify(`Spaceherd ${feed.version} is ready`, 'Restart to update. Your spaces and agents keep running.', () => this.restart());
       if (manual) this.offerRestart();
+      else this.notify(`Spaceherd ${feed.version} is ready`, 'Restart to update. Your spaces and agents keep running.', () => this.restart());
     } catch (err) {
       console.warn('[update]', err.message);
-      this.setState({ status: 'idle' });
+      this.setState(manual || before.status !== 'available' ? { status: 'idle' } : before);
       if (manual) dialog.showMessageBox({ type: 'warning', message: 'Could not check for updates.', detail: err.message });
     }
   }
@@ -262,6 +270,7 @@ class Updater extends EventEmitter {
     if (s.status === 'ready') return { label: `Restart to Update to ${s.version}`, click: () => this.restart() };
     if (s.status === 'downloading') return { label: `Downloading ${s.version}…`, enabled: false };
     if (s.status === 'checking') return { label: 'Checking for Updates…', enabled: false };
+    if (s.status === 'available') return { label: `Update to Spaceherd ${s.version}…`, click: () => this.check({ manual: true }) };
     return { label: 'Check for Updates…', click: () => this.check({ manual: true }) };
   }
 }

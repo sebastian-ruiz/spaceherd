@@ -26,9 +26,10 @@ const DEFAULT_CONFIG = {
   // VS Code views kept loaded for instant switching. Each one also runs an
   // extension host on its machine's server. Views not shown for
   // idleViewMinutes are closed too (0: never).
-  // "auto": the packaged app checks GitHub Releases, downloads and verifies
-  // updates, and installs them on restart. "off": never checks.
-  updates: 'auto',
+  // "notify": the packaged app checks GitHub Releases and shows a new
+  // version in the app menu, which downloads, verifies and installs it.
+  // "auto": downloads by itself and installs on restart. "off": never checks.
+  updates: 'notify',
   maxLiveViews: 4,
   idleViewMinutes: 30,
   // Written into VS Code's user settings in every view (see

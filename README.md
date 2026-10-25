@@ -17,7 +17,7 @@ machine. Spaces without VS Code show herdr across the whole window.
   VS Code into herdr to paste its path
 - **VS Code's shortcuts** work while herdr has focus
 - **Notifications** when an agent is blocked or done
-- **Updates itself** on macOS and as an AppImage on Linux
+- **Updates from the menu** on macOS and as an AppImage on Linux
 
 ## Requirements
 
@@ -51,17 +51,20 @@ Download the latest build for your system from
 ## Updates
 
 The packaged app checks GitHub Releases shortly after starting and every six
-hours, downloads a new version in the background and installs it when you
-quit, or right away with *Spaceherd → Restart to Update*. Your herdr spaces,
-agents and VS Code servers keep running across the restart. *Check for
-Updates…* checks now. On Linux the menu item is under *Help*.
+hours. It doesn't update by itself: a new version shows up as *Spaceherd →
+Update to Spaceherd 0.x.y…* (under *Help* on Linux). Choosing it downloads
+the update, checks it and offers to restart. Your herdr spaces, agents and
+VS Code servers keep running across the restart. *Check for Updates…* checks
+now.
 
 - **macOS** and the Linux **AppImage** update themselves. Updates are signed
   with spaceherd's own key and checked against it before installing, so no
   Apple Developer ID is needed. The app has to be somewhere it can replace
   itself: in Applications, not run from the `.dmg` or from Downloads.
-- The **`.deb`** shows a notification when a new version is out.
-- Set `"updates": "off"` in the config to never check.
+- The **`.deb`** can't replace itself: choosing the menu item opens the
+  release page to download the new `.deb`.
+- Set `"updates": "auto"` in the config to download updates in the
+  background and install them when you quit, or `"off"` to never check.
 
 ## Usage
 
@@ -199,7 +202,7 @@ still reach you. The options, with their defaults:
     { "id": "local", "type": "local", "hostnames": ["<this machine's hostname>"], "vscodePort": 47800 }
   ],
   "folderOverrides": {},
-  "updates": "auto",
+  "updates": "notify",
   "maxLiveViews": 4,
   "idleViewMinutes": 30,
   "vscodeUserSettings": {},
