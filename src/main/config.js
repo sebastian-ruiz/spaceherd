@@ -47,6 +47,16 @@ const DEFAULT_CONFIG = {
     'workbench.secondarySideBar.defaultVisibility': 'hidden',
   },
   terminalWidth: 0.42,
+  notifications: {
+    // System notifications: "never", "unfocused" (only while spaceherd isn't
+    // the focused window) or "always", as Ghostty's notify-on-command-finish.
+    system: 'never',
+    // What they're for: an agent becoming "blocked" (needs your input) or
+    // "done", and "herdr" for herdr's own notifications (OSC 9 / OSC 777).
+    events: ['blocked', 'done', 'herdr'],
+    // macOS: bounce the Dock icon for those events and for bells.
+    bounce: false,
+  },
   terminal: {
     // Installed fonts to use before the app's own JetBrains Mono and Nerd
     // Font icons (see terminal.js). None by default, as in Ghostty.
@@ -88,6 +98,7 @@ function loadConfig() {
     ...DEFAULT_CONFIG,
     ...user,
     herdr: { ...DEFAULT_CONFIG.herdr, ...user.herdr },
+    notifications: { ...DEFAULT_CONFIG.notifications, ...user.notifications },
     terminal: { ...DEFAULT_CONFIG.terminal, ...user.terminal },
     vscodeUserSettings: { ...DEFAULT_CONFIG.vscodeUserSettings, ...user.vscodeUserSettings },
   };

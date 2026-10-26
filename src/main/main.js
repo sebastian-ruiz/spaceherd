@@ -330,6 +330,7 @@ function createWindow() {
   });
   attention = new Attention({
     machines,
+    settings: config.notifications,
     onActivate: (target) => {
       if (!win) return;
       win.show();

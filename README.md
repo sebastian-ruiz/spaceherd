@@ -189,9 +189,10 @@ open editors and layout are kept per client, so those don't follow you.
   `Ctrl+Shift+B`, debug keys). Everything else, including `Ctrl+C`, `Ctrl+B`
   and `Ctrl+K`, goes to herdr. See `src/main/shortcuts.js`.
 - **Alerts:** the app reads each machine's herdr snapshot every 1.5 s. When an
-  agent becomes *blocked* or *done* it shows a notification; clicking it focuses
-  that space. The dock badge counts blocked agents. If you set herdr's
-  `ui.toast.delivery = "terminal"`, herdr's own notifications appear too.
+  agent becomes *blocked* or *done* it can show a system notification; clicking
+  it focuses that space. They're off by default: set `notifications.system`
+  (see Configuration). On macOS the Dock icon's badge counts blocked agents. If you set herdr's `ui.toast.delivery = "terminal"`, herdr's
+  own notifications can be shown too.
 
 ## Configuration
 
@@ -211,12 +212,21 @@ still reach you. The options, with their defaults:
   "idleViewMinutes": 30,
   "vscodeUserSettings": {},
   "terminalWidth": 0.42,
+  "notifications": { "system": "never", "events": ["blocked", "done", "herdr"], "bounce": false },
   "terminal": { "fontFamily": "", "fontSize": 13, "fontWeight": 400, "fontWeightBold": 700, "macOptionIsMeta": false }
 }
 ```
 
-- `herdr`, `terminal` and `vscodeUserSettings` are merged with the defaults;
-  other entries replace them.
+- `herdr`, `notifications`, `terminal` and `vscodeUserSettings` are merged
+  with the defaults; other entries replace them.
+- `notifications.system` turns on system notifications: `"unfocused"` shows
+  them only while spaceherd isn't the focused window, `"always"` also while it
+  is. `notifications.events` picks what they're for: an agent becoming
+  `"blocked"` (it needs your input) or `"done"`, and `"herdr"` for herdr's own
+  notifications. E.g. `"notifications": { "system": "unfocused", "events":
+  ["done"] }` tells you when an agent finishes while you're in another app.
+  `notifications.bounce: true` (macOS) bounces the Dock icon for those events
+  and for bells.
 - `terminal.fontSize` is in points, as in Ghostty, and defaults to Ghostty's
   size: 13 (13px) on macOS and 12 (16px) on Linux.
 - `terminal.fontFamily` lists installed fonts to use, e.g.
