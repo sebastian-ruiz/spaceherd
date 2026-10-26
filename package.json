@@ -5,6 +5,7 @@
   "description": "herdr on the left, VS Code on the right, switching together",
   "license": "MIT",
   "main": "src/main/main.js",
+  "desktopName": "spaceherd.desktop",
   "scripts": {
     "start": "electron .",
     "postinstall": "node scripts/postinstall.js",
@@ -80,6 +81,7 @@
     },
     "linux": {
       "category": "Development",
+      "icon": "build/icons",
       "target": [
         {
           "target": "AppImage",

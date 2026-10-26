@@ -1,12 +1,15 @@
 // Renders build/icon.svg to build/icon.png (1024 x 1024, transparent outside
-// the rounded tile). electron-builder makes the macOS .icns and the Linux
-// icons from the PNG. Run with Electron: `npm run icon`.
+// the rounded tile), from which electron-builder makes the macOS .icns, and
+// to build/icons/<size>.png for Linux. Linux icon themes stop at 512 x 512,
+// so a 1024 PNG alone leaves the app without an icon there. Run with
+// Electron: `npm run icon`.
 
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
 const SIZE = 1024;
+const LINUX_SIZES = [16, 24, 32, 48, 64, 128, 256, 512];
 const dir = path.join(__dirname, '..', 'build');
 const svgPath = path.join(dir, process.argv[2] || 'icon.svg');
 const pngPath = path.join(dir, process.argv[3] || 'icon.png');
@@ -30,5 +33,13 @@ app.whenReady().then(async () => {
   const image = await win.webContents.capturePage({ x: 0, y: 0, width: SIZE, height: SIZE });
   fs.writeFileSync(pngPath, image.resize({ width: SIZE, height: SIZE, quality: 'best' }).toPNG());
   console.log(`wrote ${path.relative(process.cwd(), pngPath)}`);
+  if (!process.argv[2]) {
+    fs.mkdirSync(path.join(dir, 'icons'), { recursive: true });
+    for (const size of LINUX_SIZES) {
+      const file = path.join(dir, 'icons', `${size}x${size}.png`);
+      fs.writeFileSync(file, image.resize({ width: size, height: size, quality: 'best' }).toPNG());
+    }
+    console.log(`wrote build/icons (${LINUX_SIZES.join(', ')})`);
+  }
   app.quit();
 });
