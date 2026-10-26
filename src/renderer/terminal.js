@@ -414,7 +414,8 @@ function loadBundledFonts(weights) {
 }
 
 cm.onConfig(async (cfg) => {
-  await loadBundledFonts([cfg.fontWeight, cfg.fontWeightBold]);
+  // xterm measures cells in the normal weight, whatever fontWeight is.
+  await loadBundledFonts(['normal', cfg.fontWeight, cfg.fontWeightBold]);
   term.options.fontFamily = [cfg.fontFamily, BUNDLED_FONTS].filter(Boolean).join(', ');
   term.options.fontWeight = cfg.fontWeight;
   term.options.fontWeightBold = cfg.fontWeightBold;
