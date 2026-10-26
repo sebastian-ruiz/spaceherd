@@ -32,10 +32,32 @@ app.setPath('userData', process.env.SPACEHERD_DIR
   ? path.join(process.env.SPACEHERD_DIR, 'electron')
   : path.join(app.getPath('appData'), 'spaceherd'));
 
+state.load();
+
+// Linux draws the menu bar and dialogs with the GTK theme, which GTK reads
+// once, when the first window shows. Use its dark variant unless herdr's theme
+// was light last time (see terminal:appearance). Children get the user's
+// environment back: GTK_THEME is set only until then and left out of
+// shellEnv.
+let darkGtkTheme = false;
+if (process.platform === 'linux' && !process.env.GTK_THEME && state.data.appearance !== 'light') {
+  let theme = 'Adwaita';
+  try {
+    theme = execFileSync('gsettings', ['get', 'org.gnome.desktop.interface', 'gtk-theme'], { timeout: 1000, encoding: 'utf8' })
+      .trim()
+      .replace(/^'|'$/g, '') || theme;
+  } catch {}
+  if (!/dark/i.test(theme)) {
+    process.env.GTK_THEME = `${theme}:dark`;
+    darkGtkTheme = true;
+  }
+}
+
 // Apps started from Finder get a minimal PATH. Take PATH from a login shell
 // so `herdr`, `code` and `ssh` resolve the same way as in a terminal.
 function shellEnv() {
   const env = { ...process.env };
+  if (darkGtkTheme) delete env.GTK_THEME;
   try {
     const out = execFileSync(process.env.SHELL || '/bin/zsh', ['-ilc', 'printf "__CM__%s__CM__" "$PATH"'], {
       timeout: 5000,
@@ -236,6 +258,7 @@ function createWindow() {
     acceptFirstMouse: true,
     icon: process.platform === 'linux' ? ICON : undefined,
   });
+  if (darkGtkTheme) win.once('show', () => delete process.env.GTK_THEME);
 
   terminalView = new WebContentsView({
     webPreferences: {
@@ -375,9 +398,11 @@ ipcMain.on('terminal:title', (_e, title) => spaces.onTitle(title));
 ipcMain.on('terminal:osc', (_e, code, payload) => attention.onOsc(code, payload));
 ipcMain.on('terminal:bell', () => attention.onBell());
 // The title bar (and menus) follow herdr's theme rather than the system's.
+// On Linux the menu bar follows from the next start (see GTK_THEME).
 ipcMain.on('terminal:appearance', (_e, mode) => {
   debug('herdr appearance', mode);
   nativeTheme.themeSource = mode;
+  if (state.data.appearance !== mode) state.set('appearance', mode);
 });
 ipcMain.on('terminal:debug', (_e, msg) => debug('[terminal]', msg));
 // OSC 52 from herdr: copy to the clipboard. herdr sends it for a selection
@@ -479,7 +504,6 @@ app.whenReady().then(() => {
   nativeTheme.themeSource = 'dark';
   if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(ICON);
   config = loadConfig();
-  state.load();
   shellEnv.cached = shellEnv();
   updater = new Updater({ mode: config.updates });
   updater.on('change', buildMenu);
