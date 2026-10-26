@@ -48,8 +48,16 @@ const DEFAULT_CONFIG = {
   },
   terminalWidth: 0.42,
   terminal: {
-    fontFamily: 'MesloLGS NF, JetBrainsMono Nerd Font, Menlo, monospace',
-    fontSize: 13,
+    // Installed fonts to use before the app's own JetBrains Mono and Nerd
+    // Font icons (see terminal.js). None by default, as in Ghostty.
+    fontFamily: '',
+    // In points (see terminal.js), and Ghostty's defaults: 13pt is 13px on
+    // macOS, 12pt is 16px on Linux.
+    fontSize: process.platform === 'darwin' ? 13 : 12,
+    // Lighter on Linux, where Ghostty's linear blending draws thinner text
+    // than Chromium does. The app has weights 200, 300, 400, 600 and 700.
+    fontWeight: process.platform === 'darwin' ? 400 : 300,
+    fontWeightBold: process.platform === 'darwin' ? 700 : 600,
     macOptionIsMeta: false,
   },
 };

@@ -1,7 +1,13 @@
 /* global Terminal, FitAddon, WebglAddon, cm */
 
+const isMac = navigator.platform.startsWith('Mac');
+
 const term = new Terminal({
   allowProposedApi: true,
+  // On a transparent canvas Chromium draws grayscale-antialiased glyphs, as
+  // Ghostty and macOS do, instead of LCD subpixel text with colored fringes.
+  // macOS draws no LCD text, so it skips the cost.
+  allowTransparency: !isMac,
   cursorBlink: true,
   scrollback: 0, // herdr owns scrollback
   theme: { background: '#181818' },
@@ -178,7 +184,6 @@ function linkAt(x, y) {
   return /^https?:\/\//.test(text) || file.includes('/') || /\.[A-Za-z0-9]+$/.test(file) ? text : '';
 }
 
-const isMac = navigator.platform.startsWith('Mac');
 const linkModifier = (e) => (isMac ? e.metaKey : e.ctrlKey);
 
 // While the modifier is held over a link, show the hand cursor, as terminals
@@ -360,14 +365,61 @@ function zoom(step) {
   try {
     localStorage.setItem('fontSteps', String(fontSteps));
   } catch {}
-  term.options.fontSize = baseFontSize + fontSteps;
+  applyFontSize();
   resize();
 }
 
-cm.onConfig((cfg) => {
-  term.options.fontFamily = cfg.fontFamily;
+// The font size is in points, so one config looks the same on macOS and
+// Linux. A CSS pixel is a point on macOS, but 3/4 of one on Linux (96 dpi),
+// where native terminals such as Ghostty also convert points this way.
+const PX_PER_POINT = isMac ? 1 : 96 / 72;
+function applyFontSize() {
+  term.options.fontSize = Math.round((baseFontSize + fontSteps) * PX_PER_POINT);
+  padCells();
+}
+
+// The WebGL renderer rounds the cell width down to whole device pixels, so a
+// font 9.6px wide gets 9px cells and wide glyphs run into each other ("=N").
+// One pixel of letter spacing rounds the cell up instead, as Ghostty does.
+const measureCtx = document.createElement('canvas').getContext('2d');
+function padCells() {
+  measureCtx.font = `${term.options.fontSize}px ${term.options.fontFamily}`;
+  const width = (measureCtx.measureText('W'.repeat(32)).width / 32) * devicePixelRatio;
+  term.options.letterSpacing = width - Math.floor(width) > 0.01 ? 1 : 0;
+}
+// Moving to a screen with another scale changes the device pixel width.
+(function watchPixelRatio() {
+  matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener(
+    'change',
+    () => {
+      padCells();
+      resize();
+      watchPixelRatio();
+    },
+    { once: true },
+  );
+})();
+
+// Fonts that come with the app, as Ghostty bundles its own: JetBrains Mono
+// after the configured fonts, then Nerd Font icons for glyphs the fonts
+// before it lack. Loaded before xterm measures its cells, or it measures and
+// caches a fallback font.
+const BUNDLED_FONTS = '"spaceherd JetBrains Mono", "spaceherd Symbols", monospace';
+function loadBundledFonts(weights) {
+  const faces = weights.flatMap((w) => [`${w} 13px`, `italic ${w} 13px`]);
+  return Promise.all([
+    ...faces.map((face) => document.fonts.load(`${face} "spaceherd JetBrains Mono"`)),
+    document.fonts.load('13px "spaceherd Symbols"'),
+  ]).catch((err) => console.warn('bundled fonts unavailable', err));
+}
+
+cm.onConfig(async (cfg) => {
+  await loadBundledFonts([cfg.fontWeight, cfg.fontWeightBold]);
+  term.options.fontFamily = [cfg.fontFamily, BUNDLED_FONTS].filter(Boolean).join(', ');
+  term.options.fontWeight = cfg.fontWeight;
+  term.options.fontWeightBold = cfg.fontWeightBold;
   baseFontSize = cfg.fontSize;
-  term.options.fontSize = baseFontSize + fontSteps;
+  applyFontSize();
   term.options.macOptionIsMeta = cfg.macOptionIsMeta;
   findKeys = cfg.findKeys;
   resize();

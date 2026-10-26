@@ -207,12 +207,22 @@ still reach you. The options, with their defaults:
   "idleViewMinutes": 30,
   "vscodeUserSettings": {},
   "terminalWidth": 0.42,
-  "terminal": { "fontFamily": "MesloLGS NF, JetBrainsMono Nerd Font, Menlo, monospace", "fontSize": 13, "macOptionIsMeta": false }
+  "terminal": { "fontFamily": "", "fontSize": 13, "fontWeight": 400, "fontWeightBold": 700, "macOptionIsMeta": false }
 }
 ```
 
 - `herdr`, `terminal` and `vscodeUserSettings` are merged with the defaults;
   other entries replace them.
+- `terminal.fontSize` is in points, as in Ghostty, and defaults to Ghostty's
+  size: 13 (13px) on macOS and 12 (16px) on Linux.
+- `terminal.fontFamily` lists installed fonts to use, e.g.
+  `"MesloLGS NF, Menlo"`. spaceherd comes with JetBrains Mono and Nerd Font
+  icons, as Ghostty does, and uses them by default and after the fonts
+  listed. Leave `monospace` out of the list, or the system's monospace font
+  is used before them.
+- `terminal.fontWeight` and `fontWeightBold` default to 400 and 700 on
+  macOS, and to a lighter 300 and 600 on Linux, closer to Ghostty's text
+  there. The bundled font has 200, 300, 400, 600 and 700.
 - `machines` lists machines beyond those saved in herdr (which are added
   automatically; see below), or overrides the local one. A list given here
   replaces the default, so keep the local machine in it. A local machine can
