@@ -47,6 +47,10 @@ Download the latest build for your system from
   or the `.AppImage` (`chmod +x` it and run it). AppImages need FUSE 2
   (`libfuse2` on Ubuntu). On Ubuntu 24.04 and later, AppArmor may stop
   Electron's sandbox in an AppImage; the `.deb` doesn't have that problem.
+  An AppImage that no integration tool (AppImageLauncher, Gear Lever) has
+  added to your applications, or spaceherd run from source, shows a generic
+  icon in GNOME's dock: *File → Create Desktop Entry* adds one. The item only
+  shows when there's no entry for spaceherd yet.
 
 ## Updates
 

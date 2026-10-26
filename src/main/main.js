@@ -15,6 +15,7 @@ const { installCodeCommand, uninstallCodeCommand } = require('./code-command');
 const { parseLink } = require('./links');
 const { workbenchReady, quickOpen } = require('./quick-open');
 const { Updater } = require('./updater');
+const { desktopEntryExists, createDesktopEntry } = require('./desktop-entry');
 
 app.setName('Spaceherd');
 // Run from source, the bundle is Electron's, and the About panel would show
@@ -156,7 +157,26 @@ function buildMenu() {
             { role: 'quit' },
           ],
         }
-      : { label: 'File', submenu: [...codeItems, { type: 'separator' }, { role: 'quit' }] },
+      : {
+          label: 'File',
+          submenu: [
+            ...codeItems,
+            ...(desktopEntryExists()
+              ? []
+              : [
+                  { type: 'separator' },
+                  {
+                    label: 'Create Desktop Entry',
+                    click: () => {
+                      createDesktopEntry(win, ICON);
+                      buildMenu();
+                    },
+                  },
+                ]),
+            { type: 'separator' },
+            { role: 'quit' },
+          ],
+        },
     process.platform === 'darwin'
       ? {
           // Only clipboard roles: undo/redo/select-all accelerators would steal
