@@ -68,6 +68,15 @@ function shellEnv() {
   } catch (err) {
     console.warn('Could not read PATH from login shell:', err.message);
   }
+  // Finder-launched apps get no locale either. Without one, the pbcopy herdr
+  // copies with reads its input as Mac Roman and box-drawing characters
+  // paste as "‚îÇ". Use UTF-8 unless the user's locale already is.
+  const locale = env.LC_ALL || env.LC_CTYPE || env.LANG || '';
+  if (!/utf-?8/i.test(locale)) {
+    delete env.LC_ALL;
+    env.LANG = 'en_US.UTF-8';
+    env.LC_CTYPE = 'en_US.UTF-8';
+  }
   return env;
 }
 
