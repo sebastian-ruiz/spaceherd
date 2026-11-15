@@ -54,6 +54,40 @@ function installLocalCli() {
   }
 }
 
+// How to get VS Code's `code` command on a machine, from `uname -s`, the
+// ID and ID_LIKE words of /etc/os-release, whether snap is there, and
+// `uname -m`.
+const DEB_ARCH = { x86_64: 'x64', amd64: 'x64', aarch64: 'arm64', arm64: 'arm64', armv7l: 'armhf' };
+
+function codeInstallHint({ system = '', distro = '', snap = false, arch = '' }) {
+  const ids = distro.toLowerCase().split(/\s+/);
+  const has = (...names) => names.some((n) => ids.includes(n));
+  const snapCmd = 'sudo snap install code --classic';
+  if (/darwin/i.test(system)) return 'On macOS: brew install --cask visual-studio-code';
+  if (has('debian', 'ubuntu')) {
+    const deb = DEB_ARCH[arch];
+    const aptCmd = deb
+      ? `curl -fL "https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-${deb}" -o /tmp/code.deb && sudo apt install -y /tmp/code.deb`
+      : 'install the .deb from https://code.visualstudio.com/download with sudo apt install ./code_*.deb';
+    return snap ? `With snap: ${snapCmd}\nOr with apt: ${aptCmd}` : `With apt: ${aptCmd}`;
+  }
+  if (has('arch', 'manjaro', 'endeavouros')) return 'On Arch: yay -S visual-studio-code-bin (from the AUR)';
+  if (snap) return `With snap: ${snapCmd}`;
+  if (has('fedora', 'rhel', 'centos')) return 'On Fedora/RHEL: add Microsoft\'s repository and dnf install code, see https://code.visualstudio.com/docs/setup/linux';
+  return 'Download it from https://code.visualstudio.com/download';
+}
+
+function localCodeInstallHint() {
+  if (process.platform === 'darwin') return codeInstallHint({ system: 'Darwin' });
+  let distro = '';
+  try {
+    const release = fs.readFileSync('/etc/os-release', 'utf8');
+    distro = ['ID', 'ID_LIKE'].map((k) => release.match(new RegExp(`^${k}="?([^"\n]*)`, 'm'))?.[1] || '').join(' ');
+  } catch {}
+  const arch = { x64: 'x86_64', arm64: 'aarch64', arm: 'armv7l' }[process.arch] || process.arch;
+  return codeInstallHint({ system: 'Linux', distro, arch, snap: fs.existsSync('/usr/bin/snap') || fs.existsSync('/snap/bin') });
+}
+
 // Resolves once serve-web answers with our token. A 403 means some other
 // server holds the port with a different token; waiting won't fix that.
 function waitForHttp(port, { token, timeoutMs = 300000 } = {}) {
@@ -107,6 +141,12 @@ class Machine extends EventEmitter {
     this.herdr = null;
     this.pollTimer = null;
     this.stopped = false;
+  }
+
+  // What starting VS Code is doing now, for the "Starting VS Code…" page.
+  setVscodeStatus(text) {
+    this.vscodeStatus = text;
+    this.emit('vscode-status', text);
   }
 
   matchesHost(host) {
@@ -226,6 +266,7 @@ class LocalMachine extends Machine {
     this.token = token;
 
     // Already running, started by us earlier or by a client over SSH.
+    this.setVscodeStatus(`Looking for a running VS Code server on port ${this.vscodePort}…`);
     try {
       await waitForHttp(this.vscodePort, { token, timeoutMs: 300 });
       return;
@@ -250,9 +291,19 @@ class LocalMachine extends Machine {
       stdio: ['ignore', log, log],
       detached: true,
     });
+    const cmd = this.def.codeCommand || 'code';
+    // `code` missing: fail now rather than after waitForHttp's timeout.
+    const spawnFailed = new Promise((_, reject) =>
+      proc.on('error', (err) => reject(new Error(
+        err.code === 'ENOENT'
+          ? `\`${cmd}\` isn't installed here (or isn't on the PATH). Install VS Code, then restart spaceherd.\n${localCodeInstallHint()}`
+          : `Couldn't run \`${cmd}\`: ${err.message}`,
+      ))),
+    );
     proc.unref();
     fs.closeSync(log);
-    await waitForHttp(this.vscodePort, { token });
+    this.setVscodeStatus(`Started \`${cmd} serve-web\`. Waiting for it on port ${this.vscodePort}…\nLog: ${logPath}`);
+    await Promise.race([waitForHttp(this.vscodePort, { token }), spawnFailed]);
   }
 }
 
@@ -260,6 +311,45 @@ class LocalMachine extends Machine {
 // token, so every client (laptop, desktop Mac, ...) shares it; it comes back
 // over the ssh channel. serve-web is started with nohup so it survives SSH
 // drops and open VS Code views can reconnect to the same server afterwards.
+// Starts serve-web on the remote with the command in $c, logging to the
+// shared log. Append: a second start fails on the busy port and must not wipe
+// the running server's log.
+function serveWebLine(remotePort) {
+  return `nohup $c serve-web --host 127.0.0.1 --port ${remotePort}` +
+    ' --connection-token-file ~/.config/spaceherd/vscode-token --accept-server-license-terms' +
+    ' >> ~/.config/spaceherd/serve-web.log 2>&1 < /dev/null &';
+}
+
+// Where the "Download VS Code's CLI" button puts Microsoft's standalone CLI:
+// one `code` binary that runs serve-web, no GUI. The remote script falls back
+// to it when there is no `code` on the PATH.
+const CLI_BIN = '~/.config/spaceherd/bin/code';
+
+const DOWNLOAD_CLI_SCRIPT = `set -e
+case "$(uname -s)-$(uname -m)" in
+  Linux-x86_64|Linux-amd64) os=cli-alpine-x64 ;;
+  Linux-aarch64|Linux-arm64) os=cli-alpine-arm64 ;;
+  Linux-armv7l) os=cli-linux-armhf ;;
+  Darwin-arm64) os=cli-darwin-arm64 ;;
+  Darwin-x86_64) os=cli-darwin-x64 ;;
+  *) echo "There's no VS Code CLI for $(uname -s) $(uname -m)" >&2; exit 1 ;;
+esac
+url="https://code.visualstudio.com/sha/download?build=stable&os=$os"
+t=$(mktemp -d)
+trap 'rm -rf "$t"' EXIT
+if command -v curl >/dev/null 2>&1; then curl -fsSL "$url" -o "$t/cli"
+elif command -v wget >/dev/null 2>&1; then wget -qO "$t/cli" "$url"
+else echo "Neither curl nor wget is installed" >&2; exit 1
+fi
+case "$os" in
+  cli-darwin-*) (cd "$t" && unzip -q cli) ;;
+  *) tar -xzf "$t/cli" -C "$t" ;;
+esac
+mkdir -p ~/.config/spaceherd/bin
+mv "$t/code" ${CLI_BIN}
+chmod 755 ${CLI_BIN}
+`;
+
 function remoteScript({ remotePort, codeCommand }) {
   return [
     'umask 077',
@@ -270,11 +360,20 @@ function remoteScript({ remotePort, codeCommand }) {
     'chmod 755 ~/.config/spaceherd/bin/spaceherd',
     'f=~/.config/spaceherd/vscode-token',
     `[ -s "$f" ] || od -An -N24 -tx1 /dev/urandom | tr -d ' \\n' > "$f"`,
-    // Append: a second start fails on the busy port and must not wipe the
-    // running server's log.
-    `nohup ${codeCommand} serve-web --host 127.0.0.1 --port ${remotePort}` +
-      ' --connection-token-file "$f" --accept-server-license-terms' +
-      ' >> ~/.config/spaceherd/serve-web.log 2>&1 < /dev/null &',
+    // The user's `code`, else the CLI spaceherd downloaded. Without either,
+    // say so: herdr still works, but VS Code waits for the user.
+    'c=',
+    `if command -v ${codeCommand} >/dev/null 2>&1; then c="${codeCommand}"`,
+    `elif [ -x ${CLI_BIN} ]; then c=${CLI_BIN}`,
+    'fi',
+    'if [ -n "$c" ]; then',
+    `  ${serveWebLine(remotePort)}`,
+    'else',
+    // What the machine is, for an install hint: system, distro, snap, CPU.
+    '  printf "spaceherd-nocode:%s:%s:%s:%s\\n" "$(uname -s)" \\',
+    '    "$( (. /etc/os-release && echo "$ID $ID_LIKE") 2>/dev/null)" \\',
+    '    "$(command -v snap >/dev/null 2>&1 && echo snap)" "$(uname -m)"',
+    'fi',
     'echo "spaceherd-ready:$(cat "$f")"',
     'while sleep 3600; do :; done',
     '',
@@ -291,9 +390,53 @@ class SshMachine extends Machine {
     const sockDir = path.join('/tmp', `spaceherd-${process.getuid()}`);
     fs.mkdirSync(sockDir, { recursive: true, mode: 0o700 });
     this.localSocket = path.join(sockDir, `${this.id}-herdr.sock`);
-    this.vscodeReady = new Promise((resolve) => { this.resolveVscode = resolve; });
+    this.resetVscode();
     this.retryMs = 1000;
     this.connect();
+  }
+
+  // Pending until serve-web answers. A failure shows in the VS Code view; the
+  // next SSH connection tries again.
+  resetVscode() {
+    this.vscodeFailed = false;
+    this.vscodeReady = new Promise((resolve, reject) => {
+      this.resolveVscode = resolve;
+      this.rejectVscode = reject;
+    });
+    this.vscodeReady.catch(() => {});
+  }
+
+  failVscode(err) {
+    console.warn(`[${this.id}] ${err.message}`);
+    this.vscodeFailed = true;
+    this.rejectVscode(err);
+  }
+
+  // The button on the "isn't installed" page: download the standalone CLI
+  // on the remote, start serve-web with it, and wait for it like a connect.
+  downloadCodeCli() {
+    if (this.downloadingCli) return;
+    this.downloadingCli = true;
+    const host = this.def.ssh;
+    const remotePort = this.def.remotePort || 47800;
+    this.resetVscode();
+    this.setVscodeStatus(`Downloading VS Code's CLI on ${host}…\nFrom code.visualstudio.com into ${CLI_BIN}`);
+    (async () => {
+      try {
+        await this.run(DOWNLOAD_CLI_SCRIPT);
+      } catch (err) {
+        throw new Error(`Downloading VS Code's CLI on ${host} failed: ${err.message}`);
+      }
+      this.setVscodeStatus(
+        `Downloaded. Starting VS Code's server on ${host}…\n` +
+          'The first start downloads the server, which can take a minute.\n' +
+          `Log on ${host}: ~/.config/spaceherd/serve-web.log`,
+      );
+      await this.run(`c=${CLI_BIN}\n${serveWebLine(remotePort)}\n`);
+      await waitForHttp(this.vscodePort, { token: this.token });
+    })()
+      .then(this.resolveVscode, (err) => this.failVscode(err))
+      .finally(() => { this.downloadingCli = false; });
   }
 
   sshArgs(extra) {
@@ -338,11 +481,12 @@ class SshMachine extends Machine {
   async connect() {
     if (this.stopped) return;
     let home;
+    this.setVscodeStatus(`Connecting to ${this.def.ssh} over SSH…`);
     try {
       home = await this.remoteInfo();
     } catch (err) {
       console.warn(`[${this.id}] ssh failed: ${err.message.trim()}`);
-      return this.retry();
+      return this.retry(`SSH to ${this.def.ssh} failed: ${err.message.trim()}`);
     }
     const remoteSocket = this.remoteHerdrSocket(home);
     const remotePort = this.def.remotePort || 47800;
@@ -361,22 +505,40 @@ class SshMachine extends Machine {
       out += d;
       const token = out.match(/spaceherd-ready:([0-9a-f]+)\n/)?.[1];
       if (!token) return;
+      const noCode = out.match(/spaceherd-nocode:([^:\n]*):([^:\n]*):([^:\n]*):([^:\n]*)\n/);
       out = '';
       this.token = token;
       this.retryMs = 1000;
       if (!this.herdr) this.connectHerdr(this.localSocket);
-      waitForHttp(this.vscodePort, { token }).then(this.resolveVscode, (err) => console.warn(`[${this.id}] ${err.message}`));
+      if (this.vscodeFailed) this.resetVscode();
+      this.setVscodeStatus(
+        `Connected to ${this.def.ssh}. Waiting for its VS Code server (port ${remotePort})…\n` +
+          `The first start downloads the server, which can take a minute.\n` +
+          `Log on ${this.def.ssh}: ~/.config/spaceherd/serve-web.log`,
+      );
+      if (noCode) {
+        const cmd = this.def.codeCommand || 'code';
+        const hint = codeInstallHint({ system: noCode[1], distro: noCode[2], snap: noCode[3] === 'snap', arch: noCode[4] });
+        // Shown with a button that calls downloadCodeCli().
+        this.failVscode(Object.assign(
+          new Error(`\`${cmd}\` isn't installed on ${this.def.ssh} (or isn't on its login shell's PATH).`),
+          { code: 'ENOCODE', host: this.def.ssh, hint },
+        ));
+        return;
+      }
+      waitForHttp(this.vscodePort, { token }).then(this.resolveVscode, (err) => this.failVscode(err));
     });
     proc.on('exit', (code) => {
       if (this.proc !== proc) return;
       this.proc = null;
       console.warn(`[${this.id}] ssh exited (${code}), reconnecting`);
-      this.retry();
+      this.retry(`SSH connection to ${this.def.ssh} ended (exit ${code}).`);
     });
   }
 
-  retry() {
+  retry(reason) {
     if (this.stopped) return;
+    if (reason) this.setVscodeStatus(`${reason}\nTrying again in ${Math.round(this.retryMs / 1000)}s…`);
     setTimeout(() => this.connect(), this.retryMs);
     this.retryMs = Math.min(this.retryMs * 2, 30000);
   }

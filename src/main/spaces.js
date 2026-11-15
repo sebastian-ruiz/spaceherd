@@ -42,6 +42,7 @@ class Spaces extends EventEmitter {
     this.title = null;
     this.current = null;
     for (const m of machines) this.watch(m);
+    this.views.onMessageLink = (link) => this.onMessageLink(link);
   }
 
   // `machines` is shared with the caller; call this for each one it adds.
@@ -154,14 +155,43 @@ class Spaces extends EventEmitter {
       return;
     }
     // First visit: make sure the machine's serve-web is up before loading.
-    this.views.showMessage(`Starting VS Code for ${folder}…`);
+    // The machine reports each step, shown under the title.
+    const showStatus = () => {
+      if (this.current === id) this.views.showMessage(`Starting VS Code for ${folder}…`, machine.vscodeStatus);
+    };
+    showStatus();
+    machine.on('vscode-status', showStatus);
     try {
       await machine.vscodeReady;
     } catch (err) {
-      if (this.current === id) this.views.showMessage(`VS Code server failed: ${err.message}`);
+      if (this.current !== id) return;
+      if (err.code === 'ENOCODE' && machine.downloadCodeCli) {
+        this.downloadFor = machine;
+        this.views.showMessage(
+          err.message,
+          'spaceherd can download Microsoft\'s standalone VS Code CLI (a single `code` command, a 13 MB download) ' +
+            `into ~/.config/spaceherd/bin on ${err.host}. It's only used by spaceherd.\n\n` +
+            `Or install VS Code on ${err.host} yourself and restart spaceherd:\n${err.hint}`,
+          { label: `Download VS Code's CLI on ${err.host}`, link: 'spaceherd://download-code-cli' },
+        );
+      } else {
+        this.views.showMessage(`VS Code couldn't start for ${folder}`, err.message);
+      }
       return;
+    } finally {
+      machine.off('vscode-status', showStatus);
     }
     if (this.current === id) this.views.show(key, { url, partition });
+  }
+
+  // The "Download VS Code's CLI" button: start the download, then show the
+  // space again, which waits for the machine and shows its progress.
+  onMessageLink(link) {
+    if (link !== 'spaceherd://download-code-cli' || !this.downloadFor) return;
+    this.downloadFor.downloadCodeCli();
+    this.downloadFor = null;
+    this.current = null;
+    this.update();
   }
 
   // Pin the current space to the focused pane's directory and open VS Code.

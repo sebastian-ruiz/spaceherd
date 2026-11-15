@@ -11,10 +11,22 @@ const { WebContentsView, shell } = require('electron');
 
 const BACKGROUND = '#1f1f1f';
 
-function messagePage(text) {
+const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+// `detail`, if any, goes under the text in smaller type: what's happening
+// right now, or why something failed. `action` is a button between the two,
+// { label, link } with a spaceherd:// link, handled by onMessageLink.
+function messagePage(text, detail, action) {
+  const sub = detail
+    ? `<div style="margin-top:10px;font-size:12px;color:#7a7a7a;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text">${escapeHtml(detail)}</div>`
+    : '';
+  const button = action
+    ? `<div style="margin-top:14px"><a href="${escapeHtml(action.link)}" style="display:inline-block;padding:6px 14px;border-radius:4px;
+        background:#0078d4;color:#fff;text-decoration:none;font-size:13px">${escapeHtml(action.label)}</a></div>`
+    : '';
   const html = `<!doctype html><meta charset="utf-8"><body style="margin:0;height:100vh;display:grid;place-items:center;
     background:${BACKGROUND};color:#9d9d9d;font:13px -apple-system,system-ui,sans-serif">
-    <div style="max-width:420px;text-align:center;line-height:1.5">${text}</div></body>`;
+    <div style="max-width:460px;padding:0 16px;text-align:center;line-height:1.5">${escapeHtml(text)}${button}${sub}</div></body>`;
   return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
 }
 
@@ -24,6 +36,8 @@ class VSCodeViews {
     this.maxLive = maxLive;
     this.onViewCreated = onViewCreated;
     this.onSpaceherdLink = onSpaceherdLink;
+    // Buttons on the message page; set by whoever shows them (Spaces).
+    this.onMessageLink = () => {};
     this.views = new Map(); // key -> { view, url, lastUsed, closing }
     this.activeKey = null;
     this.bounds = { x: 0, y: 0, width: 0, height: 0 };
@@ -64,6 +78,7 @@ class VSCodeViews {
       if (!event.url.startsWith('spaceherd:')) return;
       event.preventDefault();
       if (key) this.onSpaceherdLink(key, event.url);
+      else this.onMessageLink(event.url);
     });
     this.win.contentView.addChildView(view);
     view.setBounds(this.bounds);
@@ -103,8 +118,8 @@ class VSCodeViews {
     this.activeKey = null;
   }
 
-  showMessage(text) {
-    this.message.webContents.loadURL(messagePage(text));
+  showMessage(text, detail, action) {
+    this.message.webContents.loadURL(messagePage(text, detail, action));
     this.leaveActive();
     this.setActive(this.message);
     this.activeKey = null;
