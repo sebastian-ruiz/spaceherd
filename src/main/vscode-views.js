@@ -7,7 +7,7 @@
 // window comes back. Closing a view as a browser closes a tab (running its
 // unload handlers) lets VS Code end the extension host right away.
 
-const { WebContentsView, shell } = require('electron');
+const { WebContentsView, session: electronSession, shell } = require('electron');
 
 const BACKGROUND = '#1f1f1f';
 
@@ -36,12 +36,15 @@ function messagePage(text, detail, action) {
 // Python Debugger, C/C++, ...) and silently drops it from search results, so
 // only those go missing. These views run Microsoft's own VS Code web build,
 // as a browser would, so present them as the Chrome they are underneath, for
-// the session's workers too.
+// the session's workers too. A view keeps the user agent it was created
+// with, so this runs before the view exists, and returns the user agent.
 const fixedSessions = new WeakSet();
 function hideElectronFromUserAgent(session) {
-  if (fixedSessions.has(session)) return;
-  fixedSessions.add(session);
-  session.setUserAgent(session.getUserAgent().replace(/ Electron\/\S+/, '').replace(/ spaceherd\/\S+/, ''));
+  if (!fixedSessions.has(session)) {
+    fixedSessions.add(session);
+    session.setUserAgent(session.getUserAgent().replace(/ Electron\/\S+/, '').replace(/ spaceherd\/\S+/, ''));
+  }
+  return session.getUserAgent();
 }
 
 class VSCodeViews {
@@ -70,6 +73,7 @@ class VSCodeViews {
   // `key` is the space, for spaceherd:// links from its VS Code
   // (src/vscode-extension).
   createView(partition, key) {
+    const userAgent = hideElectronFromUserAgent(partition ? electronSession.fromPartition(partition) : electronSession.defaultSession);
     const view = new WebContentsView({
       webPreferences: {
         partition: partition || undefined,
@@ -79,7 +83,7 @@ class VSCodeViews {
         backgroundThrottling: false,
       },
     });
-    hideElectronFromUserAgent(view.webContents.session);
+    view.webContents.setUserAgent(userAgent);
     view.setBackgroundColor(BACKGROUND);
     view.setVisible(false);
     view.webContents.setWindowOpenHandler(({ url }) => {
