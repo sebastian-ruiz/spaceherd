@@ -30,6 +30,20 @@ function messagePage(text, detail, action) {
   return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
 }
 
+// The VS Code Marketplace answers extension lookups by id with 403 "User
+// agent is blocked." when the user agent names Electron. VS Code in the
+// browser looks up every platform-specific extension that way (Python,
+// Python Debugger, C/C++, ...) and silently drops it from search results, so
+// only those go missing. These views run Microsoft's own VS Code web build,
+// as a browser would, so present them as the Chrome they are underneath, for
+// the session's workers too.
+const fixedSessions = new WeakSet();
+function hideElectronFromUserAgent(session) {
+  if (fixedSessions.has(session)) return;
+  fixedSessions.add(session);
+  session.setUserAgent(session.getUserAgent().replace(/ Electron\/\S+/, '').replace(/ spaceherd\/\S+/, ''));
+}
+
 class VSCodeViews {
   constructor(win, { maxLive = 4, idleMinutes = 30, onViewCreated = () => {}, onSpaceherdLink = () => {} } = {}) {
     this.win = win;
@@ -65,6 +79,7 @@ class VSCodeViews {
         backgroundThrottling: false,
       },
     });
+    hideElectronFromUserAgent(view.webContents.session);
     view.setBackgroundColor(BACKGROUND);
     view.setVisible(false);
     view.webContents.setWindowOpenHandler(({ url }) => {
