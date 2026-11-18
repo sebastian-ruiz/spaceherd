@@ -101,6 +101,24 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      # Two jobs writing the same file name would overwrite each other in
+      # merge-multiple, leaving a feed that doesn't describe the file next to
+      # it. Check every feed entry against the file that will be published.
+      - name: Check the update feeds match the files
+        run: |
+          cd artifacts
+          status=0
+          for feed in latest*.yml; do
+            while read -r url sha; do
+              actual=$(openssl dgst -sha512 -binary "$url" | base64 -w0)
+              if [ "$actual" != "$sha" ]; then
+                echo "$feed: $url does not match its sha512" >&2
+                status=1
+              fi
+            done < <(awk '/^  - url:/ {u=$3} /^    sha512:/ {print u, $2}' "$feed")
+          done
+          exit $status
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
